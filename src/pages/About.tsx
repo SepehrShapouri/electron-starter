@@ -15,7 +15,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
-import { Link } from 'react-router';
+import { Link } from '@tanstack/react-router';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 // Zod schema for form validation
@@ -104,7 +104,7 @@ export default function About() {
                 <Badge variant="secondary">🚀 Rolldown Vite 7.1.20</Badge>
                 <Badge variant="secondary">🎨 shadcn/ui</Badge>
                 <Badge variant="secondary">🎭 Tailwind 4.1.16</Badge>
-                <Badge variant="secondary">🛣️ React Router v7.9</Badge>
+                <Badge variant="secondary">🛣️ TanStack Router 1.134</Badge>
                 <Badge variant="secondary">📝 Hook Form 7.66</Badge>
                 <Badge variant="secondary">✅ Zod 4.1</Badge>
                 <Badge variant="secondary">🔄 TanStack Query 5.90</Badge>

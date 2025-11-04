@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
-import { Link } from 'react-router';
+import { Link } from '@tanstack/react-router';
 
 export default function Settings() {
   return (
