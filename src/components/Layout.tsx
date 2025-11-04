@@ -1,8 +1,13 @@
-import { Outlet, Link, useLocation } from 'react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
+import { ReactNode } from 'react';
 
-export default function Layout() {
+interface LayoutProps {
+  children: ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   return (
@@ -40,9 +45,7 @@ export default function Layout() {
           </div>
         </div>
       </nav>
-      <main>
-        <Outlet />
-      </main>
+      <main>{children}</main>
     </div>
   );
 }

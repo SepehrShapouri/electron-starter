@@ -41,11 +41,12 @@ A modern Electron application template built with React, TypeScript, Vite, and s
 - **🔗 Hookform Resolvers** - Seamless integration between forms and validation
 
 ### Routing & Navigation
-- **🧭 React Router v7.9** - Latest client-side routing with modern patterns
-- **📍 Nested Routes** - Hierarchical routing with layout components and error boundaries
-- **🔗 Type-safe Navigation** - Full TypeScript support for routes and parameters
+- **🧭 TanStack Router 1.134** - Type-safe routing with automatic code generation
+- **📍 File-based Routes** - Intuitive file-system based routing with nested layouts
+- **🔗 100% Type-safe Navigation** - Full TypeScript inference for routes, params, and search
 - **❌ Error Handling** - Comprehensive error boundaries with user-friendly error pages
-- **🎯 Active Route Detection** - Smart navigation highlighting and state management
+- **🎯 Route Devtools** - Built-in developer tools for debugging routes and navigation
+- **⚡ Code Splitting** - Automatic route-based code splitting and lazy loading
 
 ### Theme & Accessibility
 - **🌙 Multi-Theme Support** - Light, dark, and system preference detection
@@ -104,6 +105,8 @@ A modern Electron application template built with React, TypeScript, Vite, and s
 - `npm run type-check` - Run TypeScript type checking
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
+- `npm run routes:generate` - Generate TanStack Router route tree
+- `npm run routes:watch` - Watch and auto-generate routes during development
 
 ### Testing
 - `npm run test` - Run unit tests with Vitest
@@ -135,10 +138,15 @@ src/
 │   ├── Home.tsx
 │   ├── About.tsx
 │   └── Settings.tsx
+├── routes/             # TanStack Router file-based routes
+│   ├── __root.tsx      # Root route layout
+│   ├── index.tsx       # Home route (/)
+│   ├── about.tsx       # About route (/about)
+│   └── settings.tsx    # Settings route (/settings)
 ├── test/               # Unit test setup and utilities
 ├── App.tsx             # Main App component
 ├── main.ts             # Electron main process
-├── router.tsx          # React Router configuration
+├── routeTree.gen.ts    # Auto-generated route tree (do not edit)
 └── index.css           # Global styles
 
 tests/
@@ -149,6 +157,7 @@ Configuration Files:
 ├── eslint.config.mts   # ESLint 9 flat configuration
 ├── playwright.config.ts # Playwright E2E test configuration
 ├── vitest.config.ts    # Vitest unit test configuration
+├── tsr.config.json     # TanStack Router configuration
 └── .prettierrc         # Prettier formatting rules
 ```
 
@@ -218,15 +227,34 @@ function MyComponent() {
 
 ## 🧭 Routing
 
-The template uses React Router v7 for navigation:
+The template uses TanStack Router for type-safe, file-based routing:
 
+### Adding New Routes
+
+1. **Create a route file** in `src/routes/`:
 ```tsx
-// Add new routes in src/router.tsx
-{
-  path: "/my-page",
-  element: <MyPage />,
-}
+// src/routes/my-page.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import MyPage from '../pages/MyPage';
+
+export const Route = createFileRoute('/my-page')({
+  component: MyPage,
+});
 ```
+
+2. **Generate the route tree**:
+```bash
+npm run routes:generate
+```
+
+### Route Features
+
+- **Type-safe navigation** with full TypeScript inference
+- **Automatic code splitting** for better performance
+- **Built-in devtools** for debugging routes
+- **Search params and route params** with validation
+- **Nested layouts** and error boundaries
+- **Route-level data loading** with loaders
 
 ## 🧪 Testing
 

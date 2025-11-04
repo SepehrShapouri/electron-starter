@@ -1,4 +1,4 @@
-import { useRouteError, Link } from 'react-router';
+import { Link } from '@tanstack/react-router';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -8,9 +8,7 @@ import {
   CardTitle,
 } from '../components/ui/card';
 
-export default function ErrorPage() {
-  const error = useRouteError() as Error;
-
+export default function ErrorPage({ error }: { error?: Error }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">

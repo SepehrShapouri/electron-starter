@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
-import { Link } from 'react-router';
+import { Link } from '@tanstack/react-router';
 
 export default function Home() {
   return (
@@ -22,7 +22,7 @@ export default function Home() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-center">
-            This app is built with Electron, React, React Router v7, and
+            This app is built with Electron, React, TanStack Router, and
             shadcn/ui components.
           </p>
           <div className="flex gap-2 justify-center">
