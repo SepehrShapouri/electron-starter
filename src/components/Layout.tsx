@@ -27,7 +27,9 @@ export default function Layout() {
                 <Link to="/about">About</Link>
               </Button>
               <Button
-                variant={location.pathname === '/settings' ? 'default' : 'ghost'}
+                variant={
+                  location.pathname === '/settings' ? 'default' : 'ghost'
+                }
                 size="sm"
                 asChild
               >

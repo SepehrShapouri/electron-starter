@@ -1,0 +1,8 @@
+node_modules
+dist
+.vite
+out
+*.log
+package-lock.json
+.git
+.DS_Store

@@ -11,7 +11,13 @@
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx src/",
     "type-check": "tsc --noEmit",
-    "build": "tsc && electron-forge make"
+    "build": "tsc && electron-forge make",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [],
   "author": {
@@ -29,12 +35,16 @@
     "@electron-forge/plugin-vite": "^7.10.2",
     "@electron/fuses": "^1.8.0",
     "@tailwindcss/postcss": "^4.1.16",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "@vitest/ui": "^4.0.6",
     "babel-plugin-react-compiler": "^1.0.0",
     "electron": "^39.0.0",
     "eslint": "^8.57.1",
@@ -42,9 +52,12 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "jsdom": "^27.1.0",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3",
-    "vite": "npm:rolldown-vite@latest"
+    "vite": "npm:rolldown-vite@latest",
+    "vitest": "^4.0.6"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

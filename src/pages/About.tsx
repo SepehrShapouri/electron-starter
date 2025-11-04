@@ -4,7 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
@@ -29,7 +35,7 @@ const fetchAppStats = async () => {
     buildDate: new Date().toLocaleDateString(),
     components: 45,
     features: 12,
-    status: 'healthy'
+    status: 'healthy',
   };
 };
 
@@ -37,7 +43,11 @@ export default function About() {
   const [formSubmitted, setFormSubmitted] = useState(false);
 
   // React Query example
-  const { data: stats, isLoading, error } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['appStats'],
     queryFn: fetchAppStats,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -68,9 +78,12 @@ export default function About() {
         {/* Header */}
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">📖 About This Template</CardTitle>
+            <CardTitle className="text-3xl font-bold">
+              📖 About This Template
+            </CardTitle>
             <CardDescription>
-              A modern Electron + React template with Tailwind CSS v4.1.16 and React Compiler
+              A modern Electron + React template with Tailwind CSS v4.1.16 and
+              React Compiler
             </CardDescription>
           </CardHeader>
         </Card>
@@ -146,7 +159,9 @@ export default function About() {
                     <span className="text-muted-foreground">Status:</span>
                     <div className="flex items-center gap-1">
                       <CheckCircle className="h-3 w-3 text-green-500" />
-                      <span className="text-sm text-green-600">{stats.status}</span>
+                      <span className="text-sm text-green-600">
+                        {stats.status}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -186,7 +201,9 @@ export default function About() {
                     placeholder="Enter your name"
                   />
                   {errors.name && (
-                    <p className="text-sm text-destructive">{errors.name.message}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
 
@@ -199,7 +216,9 @@ export default function About() {
                     placeholder="Enter your email"
                   />
                   {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email.message}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
 
@@ -211,12 +230,20 @@ export default function About() {
                     placeholder="Enter your message (min 10 characters)"
                   />
                   {errors.message && (
-                    <p className="text-sm text-destructive">{errors.message.message}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.message.message}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  {isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   {isSubmitting ? 'Submitting...' : 'Submit Form'}
                 </Button>
               </form>
