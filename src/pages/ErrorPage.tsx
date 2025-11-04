@@ -1,6 +1,12 @@
 import { useRouteError, Link } from 'react-router';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
 
 export default function ErrorPage() {
   const error = useRouteError() as Error;
