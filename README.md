@@ -57,7 +57,7 @@ A modern Electron application template built with React, TypeScript, Vite, and s
 ### Development Tools
 - **🔧 Electron Forge 7.10** - Complete build and packaging toolchain
 - **⚡ React Compiler** - Automatic React optimizations with babel-plugin-react-compiler
-- **📦 Modern Tooling** - ESLint 9.39 with flat config, PostCSS 8.5, Autoprefixer 10.4
+- **📦 Modern Tooling** - ESLint 9.39 with flat config, Tailwind CSS PostCSS integration
 - **🎯 Developer Experience** - Hot reload, TypeScript path mapping, and comprehensive linting
 - **🚀 GitHub Actions** - Automated CI/CD with cross-platform builds
 - **📋 Type Safety** - End-to-end TypeScript with strict configuration
