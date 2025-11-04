@@ -3,9 +3,14 @@ import path from 'path';
 import react from '@vitejs/plugin-react-swc';
 import babel from '@rollup/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
   plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+    }),
     react(),
     babel({
       babelHelpers: 'bundled',
