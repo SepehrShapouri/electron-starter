@@ -2,6 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { ReactNode } from 'react';
+import TitleBar from './TitleBar';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,8 +12,9 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card">
+    <div className="h-screen bg-background flex flex-col">
+      <TitleBar />
+      <nav className="border-b border-border bg-card flex-shrink-0">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold">Electron + shadcn/ui</h1>
@@ -45,7 +47,13 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </nav>
-      <main>{children}</main>
+      <main className="flex-1 overflow-auto">
+        <div className="container mx-auto p-4 h-full">
+          <div className="h-full overflow-auto">
+            {children}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

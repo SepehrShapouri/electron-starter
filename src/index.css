@@ -118,6 +118,39 @@
   * {
     border-color: hsl(var(--border));
   }
+  
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent));
+  }
+  
+  /* Scrollbar and body styling */
+  html, body {
+    overflow: hidden;
+    height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--background));
+  }
+  
+  #root {
+    height: 100vh;
+    overflow: hidden;
+  }
+  
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
