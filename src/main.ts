@@ -12,9 +12,20 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'Electron + shadcn/ui Template',
+    frame: process.platform === 'darwin',
+    titleBarStyle: 'hidden', // hides title bar but keeps shadow and window controls space
+    autoHideMenuBar: true, // hides menu bar (like VS Code)
+    ...(process.platform !== 'darwin' ? {
+      titleBarOverlay: {
+        color: '#020817',
+        symbolColor: '#f8fafc',
+        height: 30,
+      },
+    } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 

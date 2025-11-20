@@ -10,7 +10,7 @@ import {
 
 export default function ErrorPage({ error }: { error?: Error }) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4 h-full overflow-auto">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center text-destructive">
