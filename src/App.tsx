@@ -1,7 +1,7 @@
 import { RouterProvider } from '@tanstack/react-router';
 import './index.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './components/ThemeProvider';
+import { ThemeProvider } from './components/theme-provider.tsx';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { router } from './utils/routes';

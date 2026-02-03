@@ -9,21 +9,29 @@ if (started) {
 
 const createWindow = () => {
   // Create the browser window.
+  const isMac = process.platform === 'darwin';
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(app.getAppPath(), 'src', 'assets', 'clawpilot-v1.png'),
-    frame: process.platform === 'darwin',
+    icon: path.join(app.getAppPath(), 'src', 'assets', 'clawpilot-v1.icns'),
+    frame: isMac,
     backgroundColor: '#1a1a1a',
-    titleBarStyle: 'hidden', // hides title bar but keeps shadow and window controls space
+    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+    ...(isMac
+      ? {
+          trafficLightPosition: { x: 16, y: 14 },
+        }
+      : {}),
     autoHideMenuBar: true, // hides menu bar (like VS Code)
-    ...(process.platform !== 'darwin' ? {
-      titleBarOverlay: {
-        color: '#020817',
-        symbolColor: '#f8fafc',
-        height: 30,
-      },
-    } : {}),
+    ...(!isMac
+      ? {
+          titleBarOverlay: {
+            color: '#020817',
+            symbolColor: '#f8fafc',
+            height: 30,
+          },
+        }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
-import AuthLayout from '../components/auth/AuthLayout';
+import AuthLayout from '../components/auth/auth-layout';
 import AuthNotice from '../components/auth/AuthNotice';
 import AuthSurface from '../components/auth/AuthSurface';
 import { Button } from '../components/ui/button';
@@ -21,7 +21,9 @@ export default function ForgotPassword() {
       setSuccess('Check your inbox for a reset link.');
     },
     onError: (err: unknown) => {
-      setError(err instanceof Error ? err.message : 'Unable to send reset email.');
+      setError(
+        err instanceof Error ? err.message : 'Unable to send reset email.'
+      );
     },
   });
 
@@ -47,12 +49,16 @@ export default function ForgotPassword() {
                 id="forgot-email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={event => setEmail(event.target.value)}
                 placeholder="you@clawpilot.ai"
                 required
               />
             </div>
-            <Button className="w-full" type="submit" disabled={forgotMutation.isPending}>
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={forgotMutation.isPending}
+            >
               {forgotMutation.isPending ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -65,7 +71,10 @@ export default function ForgotPassword() {
           </form>
           <p className="text-xs text-muted-foreground">
             Remembered your password?{' '}
-            <Link to="/login" className="text-foreground/80 hover:text-foreground">
+            <Link
+              to="/auth/login"
+              className="text-foreground/80 hover:text-foreground"
+            >
               Back to sign in
             </Link>
             .

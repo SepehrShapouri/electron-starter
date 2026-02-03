@@ -12,9 +12,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
-import AuthLayout from '../components/auth/AuthLayout';
+import AuthLayout from '../components/auth/auth-layout';
 import { authApi } from '../lib/auth-api';
-import logoUrl from '../assets/clawpilot-v1.png';
+import logoUrl from '../assets/clawpilot-full.png';
 import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -45,7 +45,7 @@ export default function Login() {
     mutationFn: authApi.signIn,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/' });
+      navigate({ to: '/app' });
     },
     onError: (err: unknown) => {
       setError('root', {
@@ -57,7 +57,6 @@ export default function Login() {
   const onSubmit = (values: LoginFormValues) => {
     signInMutation.mutate(values);
   };
-  console.log(errors.root);
   return (
     <AuthLayout>
       <div className={cn('flex flex-col gap-6')}>
@@ -67,14 +66,14 @@ export default function Login() {
               <img
                 src={logoUrl}
                 alt="Clawpilot"
-                className="object-contain size-12"
+                className="object-contain h-10"
               />
               <span className="sr-only">clawpilot</span>
               <h1 className="text-xl font-bold">Welcome to clawpilot</h1>
               <FieldDescription>
                 Don&apos;t have an account?{' '}
                 <Link
-                  to="/signup"
+                  to="/auth/signup"
                   className="text-foreground/80 hover:text-foreground"
                 >
                   Sign up
@@ -82,7 +81,7 @@ export default function Login() {
               </FieldDescription>
             </div>
             {!!errors.root && (
-              <Alert variant='destructive'>
+              <Alert variant="destructive">
                 <AlertTitle>Something went wrong</AlertTitle>
                 <AlertDescription>{errors.root.message}</AlertDescription>
               </Alert>

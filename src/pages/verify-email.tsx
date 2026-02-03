@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
-import AuthLayout from '../components/auth/AuthLayout';
+import AuthLayout from '../components/auth/auth-layout';
 import AuthNotice from '../components/auth/AuthNotice';
 import AuthSurface from '../components/auth/AuthSurface';
 import { Button } from '../components/ui/button';
@@ -59,12 +59,16 @@ export default function VerifyEmail() {
               <Input
                 id="verify-token"
                 value={token}
-                onChange={(event) => setToken(event.target.value)}
+                onChange={event => setToken(event.target.value)}
                 placeholder="Paste the token from your email"
                 required
               />
             </div>
-            <Button className="w-full" type="submit" disabled={verifyMutation.isPending}>
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={verifyMutation.isPending}
+            >
               {verifyMutation.isPending ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -85,7 +89,7 @@ export default function VerifyEmail() {
                 id="resend-email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={event => setEmail(event.target.value)}
                 placeholder="you@clawpilot.ai"
                 required
               />
@@ -108,7 +112,10 @@ export default function VerifyEmail() {
           </form>
           <p className="text-xs text-muted-foreground">
             Back to{' '}
-            <Link to="/login" className="text-foreground/80 hover:text-foreground">
+            <Link
+              to="/auth/login"
+              className="text-foreground/80 hover:text-foreground"
+            >
               sign in
             </Link>
             .

@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import type { RouterContext } from '@/utils/routes';
-import Onboarding from '../pages/onboarding';
-import { authApi } from '../lib/auth-api';
+import AppLayout from '@/components/app/app-layout';
+import { authApi } from '@/lib/auth-api';
 
-export const Route = createFileRoute('/onboarding')({
+export const Route = createFileRoute('/app')({
   beforeLoad: async ({ context }) => {
     const { queryClient } = context as RouterContext;
     const session = await queryClient
@@ -24,11 +24,11 @@ export const Route = createFileRoute('/onboarding')({
       })
       .catch(() => null);
 
-    if (onboarding?.completed) {
-      throw redirect({ to: '/app' });
+    if (onboarding && !onboarding.completed) {
+      throw redirect({ to: '/onboarding' });
     }
 
     return { session };
   },
-  component: Onboarding,
+  component: AppLayout,
 });

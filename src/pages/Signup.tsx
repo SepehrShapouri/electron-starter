@@ -13,10 +13,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import AuthLayout from '../components/auth/AuthLayout';
 import { authApi } from '../lib/auth-api';
-import logoUrl from '../assets/clawpilot-v1.png';
+import logoUrl from '../assets/clawpilot-full.png';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import AuthLayout from '@/components/auth/auth-layout';
 
 const signupSchema = z.object({
   name: z
@@ -73,14 +73,14 @@ export default function Signup() {
               <img
                 src={logoUrl}
                 alt="Clawpilot"
-                className="object-contain size-12"
+                className="object-contain h-10"
               />
               <span className="sr-only">clawpilot</span>
               <h1 className="text-xl font-bold">Welcome to clawpilot</h1>
               <FieldDescription>
                 Already have an account?{' '}
                 <Link
-                  to="/login"
+                  to="/auth/login"
                   className="text-foreground/80 hover:text-foreground"
                 >
                   Sign in

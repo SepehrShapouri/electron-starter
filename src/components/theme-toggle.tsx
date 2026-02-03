@@ -1,6 +1,6 @@
-import { Moon, Sun, Monitor } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useTheme } from '@/components/ThemeProvider';
+import { useTheme } from '@/components/theme-provider';
+import { Monitor, Moon, Sun } from 'lucide-react';
+import { DropdownMenuItem } from './ui/dropdown-menu';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -29,9 +29,12 @@ export function ThemeToggle() {
   };
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleTheme}>
+    <DropdownMenuItem onSelect={(event)=>{
+      event.preventDefault()
+      toggleTheme()
+    }}>
       {getIcon()}
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+      Toggle theme
+    </DropdownMenuItem>
   );
 }
