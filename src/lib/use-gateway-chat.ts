@@ -65,11 +65,12 @@ function toHistoryItems(messages: unknown[]): HistoryItem[] {
   return messages
     .map(message => {
       const m = message as Record<string, unknown>;
-      const role = m.role === 'assistant' ? 'assistant' : 'user';
+      const role = m.role === 'assistant' ? 'assistant' : m.role === 'user' ? 'user' : null;
+      if (!role) return null;
       const content = extractText(message) ?? '';
       return { role, content } satisfies HistoryItem;
     })
-    .filter(item => item.content);
+    .filter((item): item is HistoryItem => Boolean(item?.content));
 }
 
 function historyEquals(a: HistoryItem[], b: HistoryItem[]): boolean {
