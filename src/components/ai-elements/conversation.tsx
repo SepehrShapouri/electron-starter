@@ -49,18 +49,22 @@ export const ConversationEmptyState = ({
 }: ConversationEmptyStateProps) => (
   <div
     className={cn(
-      'flex size-full flex-col items-center justify-center gap-3 p-8 text-center',
+      'flex size-full flex-col items-center justify-center gap-4 p-8 text-center',
       className
     )}
     {...props}
   >
     {children ?? (
       <>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium">{title}</h3>
+        {icon && <div className="text-muted-foreground/60">{icon}</div>}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">
+            {title}
+          </h3>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground/80 max-w-sm">
+              {description}
+            </p>
           )}
         </div>
       </>
@@ -83,8 +87,12 @@ export const ConversationScrollButton = ({
   return (
     !isAtBottom && (
       <Button
+        aria-label="Scroll to bottom"
         className={cn(
-          'absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted',
+          'absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full shadow-lg',
+          'bg-background/90 backdrop-blur-sm border-border/50',
+          'hover:bg-muted hover:shadow-xl',
+          'transition-all duration-200',
           className
         )}
         onClick={handleScrollToBottom}

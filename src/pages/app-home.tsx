@@ -108,23 +108,23 @@ export default function AppHome() {
           : 'ready';
 
   return (
-    <div className="relative flex h-full w-full max-w-xl mx-auto flex-col">
+    <div className="relative flex h-full w-full max-w-2xl mx-auto flex-col">
       {error && (
-        <div className="absolute top-0 left-0 right-0 z-10 px-6">
-          <Alert variant="destructive">
-            <AlertTitle>Oops</AlertTitle>
+        <div className="absolute top-4 left-4 right-4 z-10">
+          <Alert variant="destructive" className="shadow-lg">
+            <AlertTitle>Connection Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <Conversation className="h-full">
-          <ConversationContent className="px-6 py-6 pb-4">
+          <ConversationContent className="px-4 sm:px-6 py-8">
             {messages.length === 0 ? (
               <ConversationEmptyState
-                title="No messages yet"
-                description="Your OpenClaw session is ready for a first prompt."
+                title="What can I help you with?"
+                description="Ask me anything. I'm here to assist."
               />
             ) : (
               messages.map(message => (
@@ -140,27 +140,26 @@ export default function AppHome() {
         </Conversation>
       </div>
 
-      <div className="shrink-0 px-6 pb-6 pt-4">
+      <div className="shrink-0 bg-background/80 backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
         <PromptInput
           onSubmit={({ text }) => sendMessage(text)}
-          className="bg-background shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+          className="[&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-border/50 [&_[data-slot=input-group]]:bg-muted/30 [&_[data-slot=input-group]]:shadow-sm [&_[data-slot=input-group]]:transition-shadow [&:focus-within_[data-slot=input-group]]:shadow-md [&:focus-within_[data-slot=input-group]]:border-border"
         >
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder={
-                connected ? 'Message Jarvis' : 'Connecting to gateway'
-              }
-              className="bg-transparent"
+              placeholder={connected ? 'Message Jarvis…' : 'Connecting…'}
+              className="bg-transparent placeholder:text-muted-foreground/60"
             />
           </PromptInputBody>
           <PromptInputFooter className="items-center">
-            <p className="px-2 text-xs text-muted-foreground">
-              {connected ? 'Shift + Enter for newline' : 'Waiting for gateway'}
+            <p className="px-2 text-xs text-muted-foreground/70">
+              {connected ? '⇧ Enter for newline' : 'Establishing connection…'}
             </p>
             <PromptInputSubmit
               status={submitStatus}
               disabled={!connected}
               onStop={abort}
+              className="rounded-xl"
             />
           </PromptInputFooter>
         </PromptInput>
