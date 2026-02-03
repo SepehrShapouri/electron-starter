@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  BadgeCheck,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut
-} from 'lucide-react';
+import { BadgeCheck, ChevronsUpDown, CreditCard, LogOut } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -59,7 +54,7 @@ export function NavUser({ user, onSignOut, isSigningOut }: NavUserProps) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-lg"
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage

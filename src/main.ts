@@ -19,7 +19,7 @@ const createWindow = () => {
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     ...(isMac
       ? {
-          trafficLightPosition: { x: 16, y: 14 },
+          trafficLightPosition: { x: 18, y: 16 },
         }
       : {}),
     autoHideMenuBar: true, // hides menu bar (like VS Code)

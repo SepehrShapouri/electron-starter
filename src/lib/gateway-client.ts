@@ -38,6 +38,7 @@ export type GatewayClientOptions = {
   onHello?: (hello: GatewayHelloOk) => void;
   onEvent?: (evt: GatewayEventFrame) => void;
   onClose?: (info: { code: number; reason: string }) => void;
+  onGap?: (info: { expected: number; received: number }) => void;
   onError?: (err: Error) => void;
 };
 
@@ -47,6 +48,7 @@ export class GatewayClient {
   private connectNonce: string | null = null;
   private connectSent = false;
   private connectTimer: number | null = null;
+  private lastSeq: number | null = null;
 
   constructor(private opts: GatewayClientOptions) {}
 
@@ -56,6 +58,7 @@ export class GatewayClient {
 
   connect() {
     if (this.ws) return;
+    this.lastSeq = null;
     this.ws = new WebSocket(this.opts.url);
     this.ws.onopen = () => this.queueConnect();
     this.ws.onmessage = ev => this.handleMessage(String(ev.data ?? ''));
@@ -72,6 +75,7 @@ export class GatewayClient {
   disconnect() {
     this.ws?.close();
     this.ws = null;
+    this.lastSeq = null;
     this.flushPending(new Error('gateway disconnected'));
   }
 
@@ -230,6 +234,12 @@ export class GatewayClient {
           void this.sendConnect();
         }
         return;
+      }
+      if (typeof evt.seq === 'number') {
+        if (this.lastSeq !== null && evt.seq > this.lastSeq + 1) {
+          this.opts.onGap?.({ expected: this.lastSeq + 1, received: evt.seq });
+        }
+        this.lastSeq = evt.seq;
       }
       this.opts.onEvent?.(evt);
       return;

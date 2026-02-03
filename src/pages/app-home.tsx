@@ -127,13 +127,29 @@ export default function AppHome() {
                 description="Ask me anything. I'm here to assist."
               />
             ) : (
-              messages.map(message => (
-                <Message key={message.id} from={message.role}>
-                  <MessageContent>
-                    <MessageResponse>{message.content || ' '}</MessageResponse>
-                  </MessageContent>
-                </Message>
-              ))
+              messages.map(message => {
+                const isThinking =
+                  message.role === 'assistant' &&
+                  message.status === 'streaming' &&
+                  !message.content;
+
+                return (
+                  <Message key={message.id} from={message.role}>
+                    <MessageContent>
+                      {isThinking ? (
+                        <div className="inline-flex items-center gap-1.5 text-muted-foreground leading-none py-1 overflow-visible">
+                          <span className="sr-only">Thinking</span>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
+                        </div>
+                      ) : (
+                        <MessageResponse>{message.content || ' '}</MessageResponse>
+                      )}
+                    </MessageContent>
+                  </Message>
+                );
+              })
             )}
           </ConversationContent>
           <ConversationScrollButton />

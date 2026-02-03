@@ -1,51 +1,21 @@
 'use client';
 
-import { NavMain } from '@/components/nav-main';
-import { NavSecondary } from '@/components/nav-secondary';
 import { NavUser } from '@/components/nav-user';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { authApi } from '@/lib/auth-api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useRouteContext } from '@tanstack/react-router';
-import { Bot, Grid, LifeBuoy, Send, Wrench } from 'lucide-react';
+import { Link, useNavigate, useRouteContext } from '@tanstack/react-router';
+import { Bot, Grid, Wrench } from 'lucide-react';
 import * as React from 'react';
-
-const data = {
-  navMain: [
-    {
-      title: 'Jarvis',
-      url: '/app/',
-      icon: Bot,
-    },
-    {
-      title: 'Integrations',
-      url: '/app/integrations',
-      icon: Grid,
-    },
-    {
-      title: 'Skills',
-      url: '/app/skills',
-      icon: Wrench,
-    },
-  ],
-  navSecondary: [
-    {
-      title: 'Support',
-      url: '#',
-      icon: LifeBuoy,
-    },
-    {
-      title: 'Feedback',
-      url: '#',
-      icon: Send,
-    },
-  ],
-  projects: [],
-};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { session } = useRouteContext({ from: '/app' });
@@ -70,15 +40,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   return (
-    <Sidebar
-      className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
-      {...props}
-    >
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+    <Sidebar variant="floating" {...props}>
+      {/* Header - spacing for traffic lights area */}
+      <SidebarHeader
+        className="h-[52px] p-0"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      />
+
+      <SidebarContent className="gap-0">
+        {/* Navigation */}
+        <SidebarGroup className="px-3 py-2">
+          <SidebarMenu className="gap-1">
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Jarvis" className="h-9">
+                <Link to="/app">
+                  <Bot className="h-4 w-4" />
+                  <span>Jarvis</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Integrations" className="h-9">
+                <Link to="/app/integrations">
+                  <Grid className="h-4 w-4" />
+                  <span>Integrations</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Skills" className="h-9">
+                <Link to="/app/skills">
+                  <Wrench className="h-4 w-4" />
+                  <span>Skills</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+
+      <SidebarFooter className="border-t border-sidebar-border p-2">
         <NavUser
           user={user}
           onSignOut={() => signOutMutation.mutate()}
