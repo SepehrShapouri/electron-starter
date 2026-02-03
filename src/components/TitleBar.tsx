@@ -8,7 +8,6 @@ export default function TitleBar() {
         } as React.CSSProperties
       }
     >
-      <div className="px-3 text-sm font-medium tracking-wide">Electron + shadcn/ui Template</div>
     </div>
   );
 }

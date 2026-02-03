@@ -13,6 +13,7 @@ const createWindow = () => {
     width: 1200,
     height: 800,
     frame: process.platform === 'darwin',
+    backgroundColor: '#1a1a1a',
     titleBarStyle: 'hidden', // hides title bar but keeps shadow and window controls space
     autoHideMenuBar: true, // hides menu bar (like VS Code)
     ...(process.platform !== 'darwin' ? {
