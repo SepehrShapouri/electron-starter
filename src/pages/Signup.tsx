@@ -1,103 +1,145 @@
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import AuthLayout from '../components/auth/AuthLayout';
-import AuthNotice from '../components/auth/AuthNotice';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { authApi } from '../lib/auth-api';
+import logoUrl from '../assets/clawpilot-v1.png';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const signupSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters.')
+    .max(80, 'Name must be 80 characters or less.'),
+  email: z.string().email('Enter a valid email address.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
+});
+
+type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function Signup() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+    },
+  });
 
   const signUpMutation = useMutation({
     mutationFn: authApi.signUp,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
-      setSuccess('Account created. You are now signed in.');
       navigate({ to: '/' });
     },
     onError: (err: unknown) => {
-      setError(err instanceof Error ? err.message : 'Unable to create account.');
+      setError('root', {
+        message:
+          err instanceof Error ? err.message : 'Unable to create account.',
+      });
     },
   });
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-    signUpMutation.mutate({ name, email, password });
+  const onSubmit = (values: SignupFormValues) => {
+    signUpMutation.mutate(values);
   };
 
   return (
-    <AuthLayout
-      title="Create your account"
-      description="Start a new Clawpilot workspace in seconds."
-    >
-      <Card className="border-border/60 bg-card shadow-none">
-        <CardContent className="space-y-4 pt-6">
-          <AuthNotice error={error} success={success} />
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="signup-name">Name</Label>
-              <Input
-                id="signup-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Jordan Lee"
-                required
+    <AuthLayout>
+      <div className={cn('flex flex-col gap-6')}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <FieldGroup>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <img
+                src={logoUrl}
+                alt="Clawpilot"
+                className="object-contain size-12"
               />
+              <span className="sr-only">clawpilot</span>
+              <h1 className="text-xl font-bold">Welcome to clawpilot</h1>
+              <FieldDescription>
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="text-foreground/80 hover:text-foreground"
+                >
+                  Sign in
+                </Link>
+              </FieldDescription>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
+            {!!errors.root && (
+              <Alert variant="destructive">
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription>{errors.root.message}</AlertDescription>
+              </Alert>
+            )}
+            <Field data-invalid={!!errors.name}>
+              <FieldLabel htmlFor="name">Full name</FieldLabel>
               <Input
-                id="signup-email"
+                id="name"
+                placeholder="John doe"
+                autoComplete="name"
+                aria-invalid={!!errors.name}
+                {...register('name')}
+              />
+              <FieldError errors={[errors.name]} />
+            </Field>
+            <Field data-invalid={!!errors.email}>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
                 type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@clawpilot.ai"
-                required
+                placeholder="m@example.com"
+                autoComplete="email"
+                aria-invalid={!!errors.email}
+                {...register('email')}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
+              <FieldError errors={[errors.email]} />
+            </Field>
+            <Field data-invalid={!!errors.password}>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
               <Input
-                id="signup-password"
+                id="password"
                 type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
+                placeholder="********"
+                autoComplete="new-password"
+                aria-invalid={!!errors.password}
+                {...register('password')}
               />
-            </div>
-            <Button className="w-full" type="submit" disabled={signUpMutation.isPending}>
-              {signUpMutation.isPending ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating account
-                </span>
-              ) : (
-                'Create account'
-              )}
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            Already have access?{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              Sign in instead
-            </Link>
-            .
-          </p>
-        </CardContent>
-      </Card>
+              <FieldError errors={[errors.password]} />
+            </Field>
+            <Field>
+              <Button type="submit" disabled={signUpMutation.isPending}>
+                Create my account
+              </Button>
+            </Field>
+          </FieldGroup>
+        </form>
+        <FieldDescription className="px-6 text-center">
+          By clicking continue, you agree to our{' '}
+          <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </FieldDescription>
+      </div>
     </AuthLayout>
   );
 }

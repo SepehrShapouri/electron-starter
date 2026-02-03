@@ -70,7 +70,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.2.2",
     "@rollup/plugin-babel": "^6.1.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.16",
@@ -79,6 +79,7 @@
     "@tanstack/router-devtools": "^1.134.12",
     "@tanstack/router-vite-plugin": "^1.134.12",
     "@vitejs/plugin-react-swc": "^4.2.0",
+    "axios": "^1.13.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

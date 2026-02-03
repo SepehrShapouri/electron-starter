@@ -4,8 +4,8 @@ import { Link } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import AuthLayout from '../components/auth/AuthLayout';
 import AuthNotice from '../components/auth/AuthNotice';
+import AuthSurface from '../components/auth/AuthSurface';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { authApi } from '../lib/auth-api';
@@ -38,8 +38,8 @@ export default function ResetPassword() {
       title="Set a new password"
       description="Paste your reset token and choose a new password."
     >
-      <Card className="border-border/60 bg-card shadow-none">
-        <CardContent className="space-y-4 pt-6">
+      <AuthSurface>
+        <div className="space-y-4">
           <AuthNotice error={error} success={success} />
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
@@ -75,13 +75,13 @@ export default function ResetPassword() {
           </form>
           <p className="text-xs text-muted-foreground">
             Ready to sign in?{' '}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/login" className="text-foreground/80 hover:text-foreground">
               Go to login
             </Link>
             .
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </AuthSurface>
     </AuthLayout>
   );
 }

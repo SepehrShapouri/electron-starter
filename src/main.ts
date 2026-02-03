@@ -12,6 +12,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: path.join(app.getAppPath(), 'src', 'assets', 'clawpilot-v1.png'),
     frame: process.platform === 'darwin',
     backgroundColor: '#1a1a1a',
     titleBarStyle: 'hidden', // hides title bar but keeps shadow and window controls space

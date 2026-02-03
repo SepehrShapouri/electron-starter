@@ -11,6 +11,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'electron-shadcn',
+    icon: 'src/assets/clawpilot-v1',
   },
   rebuildConfig: {},
   makers: [

@@ -1,98 +1,128 @@
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import AuthLayout from '../components/auth/AuthLayout';
-import AuthNotice from '../components/auth/AuthNotice';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { authApi } from '../lib/auth-api';
+import logoUrl from '../assets/clawpilot-v1.png';
+import { z } from 'zod';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const loginSchema = z.object({
+  email: z.string().email('Enter a valid email address.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
   const signInMutation = useMutation({
     mutationFn: authApi.signIn,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
-      setSuccess('Signed in successfully.');
       navigate({ to: '/' });
     },
     onError: (err: unknown) => {
-      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+      setError('root', {
+        message: err instanceof Error ? err.message : 'Unable to sign in.',
+      });
     },
   });
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-    signInMutation.mutate({ email, password });
+  const onSubmit = (values: LoginFormValues) => {
+    signInMutation.mutate(values);
   };
-
+  console.log(errors.root);
   return (
-    <AuthLayout
-      title="Welcome back"
-      description="Sign in with your email and password to continue."
-    >
-      <Card className="border-border/60 bg-card shadow-none">
-        <CardContent className="space-y-4 pt-6">
-          <AuthNotice error={error} success={success} />
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="login-email">Email</Label>
-              <Input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@clawpilot.ai"
-                required
+    <AuthLayout>
+      <div className={cn('flex flex-col gap-6')}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <FieldGroup>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <img
+                src={logoUrl}
+                alt="Clawpilot"
+                className="object-contain size-12"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="login-password">Password</Label>
-              <Input
-                id="login-password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Forgot your password?</span>
-                <Link to="/forgot" className="text-primary hover:underline">
-                  Reset it
+              <span className="sr-only">clawpilot</span>
+              <h1 className="text-xl font-bold">Welcome to clawpilot</h1>
+              <FieldDescription>
+                Don&apos;t have an account?{' '}
+                <Link
+                  to="/signup"
+                  className="text-foreground/80 hover:text-foreground"
+                >
+                  Sign up
                 </Link>
-              </div>
+              </FieldDescription>
             </div>
-            <Button className="w-full" type="submit" disabled={signInMutation.isPending}>
-              {signInMutation.isPending ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in
-                </span>
-              ) : (
-                'Sign in'
-              )}
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            New here?{' '}
-            <Link to="/signup" className="text-primary hover:underline">
-              Create an account
-            </Link>
-            .
-          </p>
-        </CardContent>
-      </Card>
+            {!!errors.root && (
+              <Alert variant='destructive'>
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription>{errors.root.message}</AlertDescription>
+              </Alert>
+            )}
+            <Field data-invalid={!!errors.email}>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                autoComplete="email"
+                aria-invalid={!!errors.email}
+                {...register('email')}
+              />
+              <FieldError errors={[errors.email]} />
+            </Field>
+            <Field data-invalid={!!errors.password}>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <Input
+                id="password"
+                type="password"
+                placeholder="********"
+                autoComplete="current-password"
+                aria-invalid={!!errors.password}
+                {...register('password')}
+              />
+              <FieldError errors={[errors.password]} />
+            </Field>
+            <Field>
+              <Button type="submit" disabled={signInMutation.isPending}>
+                Login
+              </Button>
+            </Field>
+          </FieldGroup>
+        </form>
+        <FieldDescription className="px-6 text-center">
+          By clicking continue, you agree to our{' '}
+          <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </FieldDescription>
+      </div>
     </AuthLayout>
   );
 }

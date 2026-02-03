@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import AppHome from '../pages/AppHome';
+import Onboarding from '../pages/Onboarding';
 import { authApi } from '../lib/auth-api';
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/onboarding')({
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient
       .fetchQuery({
@@ -22,11 +22,11 @@ export const Route = createFileRoute('/')({
       })
       .catch(() => null);
 
-    if (onboarding && !onboarding.completed) {
-      throw redirect({ to: '/onboarding' });
+    if (onboarding?.completed) {
+      throw redirect({ to: '/' });
     }
 
     return { session };
   },
-  component: AppHome,
+  component: Onboarding,
 });
