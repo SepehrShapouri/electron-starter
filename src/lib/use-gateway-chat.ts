@@ -61,6 +61,11 @@ type HistoryItem = {
   content: string;
 };
 
+type ToolStatus = {
+  name: string;
+  phase: 'start' | 'update';
+};
+
 function toHistoryItems(messages: unknown[]): HistoryItem[] {
   return messages
     .map(message => {
@@ -100,6 +105,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
   const [resolvedSessionKey, setResolvedSessionKey] = useState(
     normalizeSessionKeyForDefaults(config.sessionKey)
   );
+  const [toolStatus, setToolStatus] = useState<ToolStatus | null>(null);
   const sessionKeyRef = useRef(resolvedSessionKey);
   const clientRef = useRef<GatewayClient | null>(null);
   const runToMessageId = useRef(new Map<string, string>());
@@ -123,23 +129,30 @@ export function useGatewayChat(config: GatewayChatConfig) {
           return prev;
         }
         if (historyIsPrefix(prevHistory, history)) {
-          const finalized = prev.map(item =>
-            item.status === 'streaming' ? { ...item, status: 'final' } : item
+          const finalized = prev.map(
+            (item): ChatMessage =>
+              item.status === 'streaming' ? { ...item, status: 'final' } : item
           );
-          const extra = history.slice(prevHistory.length).map((item, index) => ({
-            id: `${item.role}-history-${prevHistory.length + index}`,
+          const extra = history
+            .slice(prevHistory.length)
+            .map(
+              (item, index): ChatMessage => ({
+                id: `${item.role}-history-${prevHistory.length + index}`,
+                role: item.role,
+                content: item.content,
+                status: 'final',
+              })
+            );
+          return [...finalized, ...extra];
+        }
+        return history.map(
+          (item, index): ChatMessage => ({
+            id: `${item.role}-history-${index}`,
             role: item.role,
             content: item.content,
             status: 'final',
-          } satisfies ChatMessage));
-          return [...finalized, ...extra];
-        }
-        return history.map((item, index) => ({
-          id: `${item.role}-history-${index}`,
-          role: item.role,
-          content: item.content,
-          status: 'final',
-        } satisfies ChatMessage));
+          })
+        );
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -160,6 +173,39 @@ export function useGatewayChat(config: GatewayChatConfig) {
 
   const handleEvent = useCallback(
     (evt: GatewayEventFrame) => {
+      if (evt.event === 'agent') {
+        const payload = evt.payload as
+          | {
+              stream?: string;
+              sessionKey?: string;
+              data?: {
+                phase?: string;
+                name?: string;
+                isError?: boolean;
+              };
+            }
+          | undefined;
+        if (!payload || payload.stream !== 'tool') return;
+        if (
+          payload.sessionKey &&
+          payload.sessionKey !== sessionKeyRef.current
+        ) {
+          return;
+        }
+        const phase = payload.data?.phase;
+        const name = payload.data?.name;
+        if (typeof phase !== 'string' || typeof name !== 'string') {
+          return;
+        }
+        if (phase === 'result') {
+          setToolStatus(null);
+          return;
+        }
+        if (phase === 'start' || phase === 'update') {
+          setToolStatus({ name, phase });
+        }
+        return;
+      }
       if (evt.event !== 'chat') return;
       const payload = evt.payload as
         | {
@@ -366,6 +412,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
     status,
     error,
     messages,
+    toolStatus,
     connected,
     connect,
     disconnect,

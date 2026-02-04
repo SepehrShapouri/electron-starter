@@ -1,7 +1,7 @@
 'use client';
 
 import { useSidebar } from '@/components/ui/sidebar';
-import { PanelLeft } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 import { Button } from '../ui/button';
 
 export function SidebarToggle() {
@@ -11,10 +11,9 @@ export function SidebarToggle() {
     <Button
       size="icon-sm"
       onClick={toggleSidebar}
-      className="fixed top-[10px] left-[78px] z-[9999]"
       variant="ghost"
     >
-      <PanelLeft />
+      <Menu />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

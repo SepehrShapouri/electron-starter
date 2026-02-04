@@ -76,7 +76,6 @@ export default function Signup() {
                 className="object-contain h-10"
               />
               <span className="sr-only">clawpilot</span>
-              <h1 className="text-xl font-bold">Welcome to clawpilot</h1>
               <FieldDescription>
                 Already have an account?{' '}
                 <Link

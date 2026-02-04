@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -6,6 +6,10 @@ import started from 'electron-squirrel-startup';
 if (started) {
   app.quit();
 }
+
+ipcMain.handle('is-fullscreen', () => {
+  return BrowserWindow.getFocusedWindow()?.isFullScreen() ?? false;
+});
 
 const createWindow = () => {
   // Create the browser window.
@@ -37,6 +41,14 @@ const createWindow = () => {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', false);
   });
 
   // and load the index.html of the app.

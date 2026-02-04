@@ -241,7 +241,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm flex size-full flex-col"
+          className="backdrop-blur-xl group-data-[variant=floating]:border group-data-[variant=floating]:border-white/[0.08] group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-lg flex size-full flex-col bg-gradient-to-t from-[#ff6b4520] via-sidebar/90 to-sidebar/80"
         >
           {children}
         </div>
