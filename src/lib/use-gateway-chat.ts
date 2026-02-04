@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { ToolUIPart } from 'ai';
 import { GatewayClient, type GatewayEventFrame } from './gateway-client';
 import { extractText } from './message-extract';
+import { parseToolInvocations, toToolUIParts } from './parse-tools';
 
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   status?: 'streaming' | 'final' | 'error';
+  parts?: ToolUIPart[];
 };
 
 export type GatewayChatStatus =
@@ -66,6 +69,15 @@ type ToolStatus = {
   phase: 'start' | 'update';
 };
 
+type ToolEvent = {
+  id: string;
+  name: string;
+  input?: Record<string, unknown>;
+  output?: unknown;
+  error?: string;
+  state: 'running' | 'completed' | 'error';
+};
+
 function toHistoryItems(messages: unknown[]): HistoryItem[] {
   return messages
     .map(message => {
@@ -106,6 +118,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
     normalizeSessionKeyForDefaults(config.sessionKey)
   );
   const [toolStatus, setToolStatus] = useState<ToolStatus | null>(null);
+  const [toolEvents, setToolEvents] = useState<Map<string, ToolEvent>>(new Map());
   const sessionKeyRef = useRef(resolvedSessionKey);
   const clientRef = useRef<GatewayClient | null>(null);
   const runToMessageId = useRef(new Map<string, string>());
@@ -119,7 +132,8 @@ export function useGatewayChat(config: GatewayChatConfig) {
         sessionKey: sessionKeyRef.current,
         limit: 200,
       })) as { messages?: unknown[] };
-      const history = toHistoryItems(res.messages ?? []);
+      const rawMessages = res.messages ?? [];
+      const history = toHistoryItems(rawMessages);
       setMessages(prev => {
         const prevHistory = prev.map(item => ({
           role: item.role,
@@ -136,22 +150,36 @@ export function useGatewayChat(config: GatewayChatConfig) {
           const extra = history
             .slice(prevHistory.length)
             .map(
-              (item, index): ChatMessage => ({
-                id: `${item.role}-history-${prevHistory.length + index}`,
-                role: item.role,
-                content: item.content,
-                status: 'final',
-              })
+              (item, index): ChatMessage => {
+                const messageId = `${item.role}-history-${prevHistory.length + index}`;
+                const rawMessage = rawMessages[prevHistory.length + index];
+                const tools = parseToolInvocations(rawMessage);
+                const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
+                return {
+                  id: messageId,
+                  role: item.role,
+                  content: item.content,
+                  status: 'final',
+                  parts,
+                };
+              }
             );
           return [...finalized, ...extra];
         }
         return history.map(
-          (item, index): ChatMessage => ({
-            id: `${item.role}-history-${index}`,
-            role: item.role,
-            content: item.content,
-            status: 'final',
-          })
+          (item, index): ChatMessage => {
+            const messageId = `${item.role}-history-${index}`;
+            const rawMessage = rawMessages[index];
+            const tools = parseToolInvocations(rawMessage);
+            const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
+            return {
+              id: messageId,
+              role: item.role,
+              content: item.content,
+              status: 'final',
+              parts,
+            };
+          }
         );
       });
     } catch (err) {
@@ -182,10 +210,16 @@ export function useGatewayChat(config: GatewayChatConfig) {
                 phase?: string;
                 name?: string;
                 isError?: boolean;
+                result?: unknown;
               };
             }
           | undefined;
-        if (!payload || payload.stream !== 'tool') return;
+        console.log('🎯 Agent event:', evt, 'stream:', payload?.stream);
+        if (!payload) return;
+        if (payload.stream !== 'tool') {
+          console.log('⏭️ Skipping non-tool stream:', payload.stream);
+          return;
+        }
         if (
           payload.sessionKey &&
           payload.sessionKey !== sessionKeyRef.current
@@ -197,6 +231,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
         if (typeof phase !== 'string' || typeof name !== 'string') {
           return;
         }
+        console.log('🔧 Tool event:', { phase, name, data: payload.data });
         if (phase === 'result') {
           setToolStatus(null);
           return;
@@ -226,10 +261,14 @@ export function useGatewayChat(config: GatewayChatConfig) {
         messageId &&
         typeof nextText === 'string'
       ) {
+        console.log('📦 Delta message:', payload.message);
+        const tools = parseToolInvocations(payload.message);
+        console.log('🔧 Parsed tools:', tools);
+        const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
         setMessages(prev =>
           prev.map(item =>
             item.id === messageId
-              ? { ...item, content: nextText, status: 'streaming' }
+              ? { ...item, content: nextText, status: 'streaming', parts }
               : item
           )
         );
@@ -239,6 +278,10 @@ export function useGatewayChat(config: GatewayChatConfig) {
       if (payload.state === 'final') {
         setStatus('ready');
         if (messageId) {
+          console.log('✅ Final message:', payload.message);
+          const tools = parseToolInvocations(payload.message);
+          console.log('🔧 Parsed tools (final):', tools);
+          const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
           setMessages(prev =>
             prev.map(item =>
               item.id === messageId
@@ -246,6 +289,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
                     ...item,
                     content: nextText ?? item.content,
                     status: 'final',
+                    parts,
                   }
                 : item
             )

@@ -27,6 +27,13 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from '../components/ai-elements/tool';
 import { authApi } from '../lib/auth-api';
 import {
   loadGatewayProfile,
@@ -199,9 +206,39 @@ export default function AppHome() {
                           <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
                         </div>
                       ) : (
-                        <MessageResponse>
-                          {message.content || ' '}
-                        </MessageResponse>
+                        <>
+                          {message.role === 'assistant' && message.parts?.map((part, idx) => (
+                            <Tool
+                              key={`${message.id}-tool-${idx}`}
+                              defaultOpen={
+                                part.state === 'output-available' ||
+                                part.state === 'output-error'
+                              }
+                            >
+                              <ToolHeader type={part.type} state={part.state} />
+                              <ToolContent>
+                                <ToolInput input={part.input} />
+                                <ToolOutput
+                                  output={
+                                    part.output ? (
+                                      <MessageResponse>
+                                        {typeof part.output === 'string'
+                                          ? part.output
+                                          : JSON.stringify(part.output, null, 2)}
+                                      </MessageResponse>
+                                    ) : undefined
+                                  }
+                                  errorText={part.errorText}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          ))}
+                          {message.content && (
+                            <MessageResponse>
+                              {message.content}
+                            </MessageResponse>
+                          )}
+                        </>
                       )}
                     </MessageContent>
                   </Message>
