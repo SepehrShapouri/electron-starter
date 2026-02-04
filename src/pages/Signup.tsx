@@ -50,6 +50,10 @@ export default function Signup() {
     mutationFn: authApi.signUp,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
+      await authApi
+        .saveOnboarding({ completed: true, onboardingStep: 'completed' })
+        .catch(() => null);
+      await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       navigate({ to: '/' });
     },
     onError: (err: unknown) => {
