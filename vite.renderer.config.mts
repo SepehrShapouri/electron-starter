@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import svgr from 'vite-plugin-svgr';
 import babel from '@rollup/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-vite-plugin';
@@ -9,10 +10,13 @@ import { tanstackRouter } from '@tanstack/router-vite-plugin';
 export default defineConfig({
   plugins: [
     tanstackRouter({
-      target: "react",
+      target: 'react',
       autoCodeSplitting: true,
     }),
     react(),
+    svgr({
+      include: '**/*.svg',
+    }),
     babel({
       babelHelpers: 'bundled',
       extensions: ['.js', '.jsx', '.ts', '.tsx'],

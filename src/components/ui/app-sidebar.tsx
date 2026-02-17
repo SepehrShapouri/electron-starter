@@ -54,7 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   return (
-    <Sidebar variant="floating" {...props}>
+    <Sidebar variant="sidebar" {...props}>
       
       <SidebarHeader
         className="h-[52px] p-0"

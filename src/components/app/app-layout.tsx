@@ -3,13 +3,12 @@ import {
   SidebarProvider,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { AppSidebar } from '../ui/app-sidebar';
-import { Outlet } from '@tanstack/react-router';
-import { SidebarToggle } from './sidebar-toggle';
-import whiteLogo from '../../assets/clawpilot-full-white.png';
-import blackLogo from '../../assets/clawpilot-full-dark.png';
-import { cn } from '@/lib/utils';
 import { useFullscreen } from '@/hooks/use-fullscreen';
+import { cn } from '@/lib/utils';
+import { Outlet } from '@tanstack/react-router';
+import { AppSidebar } from '../ui/app-sidebar';
+import Clawpilot from '@/components/icons/Clawpilot.svg'
+import { SidebarToggle } from './sidebar-toggle';
 export default function AppLayout() {
   return (
     <SidebarProvider
@@ -38,8 +37,7 @@ export const SidebarHeader = () => {
         isFullscreen && 'pl-4'
       )}
     >
-      <img src={whiteLogo} className="h-4 hidden dark:block  " alt="" />
-      <img src={blackLogo} className="h-4 dark:hidden " alt="" />
+      <Clawpilot className="h-6 w-8"/>
       <SidebarToggle />
     </div>
   );

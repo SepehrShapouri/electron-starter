@@ -1,8 +1,10 @@
-import * as React from "react"
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
+"use client";
 
-import { cn } from "@/lib/utils"
-import { CircleIcon } from "lucide-react"
+import * as React from "react";
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { CircleIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 function RadioGroup({
   className,
@@ -11,10 +13,10 @@ function RadioGroup({
   return (
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
-      className={cn("grid gap-2 w-full", className)}
+      className={cn("grid gap-3", className)}
       {...props}
     />
-  )
+  );
 }
 
 function RadioGroupItem({
@@ -25,19 +27,19 @@ function RadioGroupItem({
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        "border-input text-primary dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 flex size-4 rounded-full focus-visible:ring-[3px] aria-invalid:ring-[3px] group/radio-group-item peer relative aspect-square shrink-0 border outline-none after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "text-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-red-9/20  aria-invalid:border-red-9 aspect-square size-4 shrink-0 rounded-full border transition-color outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
     >
       <RadioGroupPrimitive.Indicator
         data-slot="radio-group-indicator"
-        className="group-aria-invalid/radio-group-item:text-destructive text-primary flex size-4 items-center justify-center"
+        className="relative flex items-center justify-center"
       >
-        <CircleIcon className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 fill-current" />
+        <CircleIcon className="fill-accent-9 text-accent-9 absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
-  )
+  );
 }
 
-export { RadioGroup, RadioGroupItem }
+export { RadioGroup, RadioGroupItem };
