@@ -1,10 +1,21 @@
-/// <reference types="vite/client" />
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
 
 declare module '*.svg' {
   import type { FunctionComponent, SVGProps } from 'react';
 
   const ReactComponent: FunctionComponent<SVGProps<SVGSVGElement>>;
   export default ReactComponent;
+}
+
+declare module '*.png' {
+  const src: string;
+  export default src;
 }
 
 // Electron Forge Vite plugin globals

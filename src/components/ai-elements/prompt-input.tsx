@@ -64,7 +64,7 @@ import {
   useRef,
   useState,
 } from 'react';
-
+import IconArrowUp from '@/components/icons/IconArrowUp.svg'
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string })[];
   add: (files: File[] | FileList) => void;
@@ -980,7 +980,7 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   const isGenerating = status === 'submitted' || status === 'streaming';
 
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <IconArrowUp className="size-4" />;
 
   if (status === 'submitted') {
     Icon = <Loader2Icon className="size-4 animate-spin" />;

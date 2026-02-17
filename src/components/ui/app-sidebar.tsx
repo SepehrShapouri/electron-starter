@@ -1,6 +1,7 @@
-'use client';
-
-import { NavUser } from '@/components/nav-user';
+import IconBlocks from '@/components/icons/IconBlocks.svg';
+import IconBubble4 from '@/components/icons/IconBubble4.svg';
+import IconCalendarClock from '@/components/icons/IconCalendarClock.svg';
+import IconIntegrations from '@/components/icons/IconIntegrations.svg';
 import {
   Sidebar,
   SidebarContent,
@@ -11,39 +12,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { authApi } from '@/lib/auth-api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Link,
-  useMatchRoute,
-  useNavigate,
-  useRouteContext,
-} from '@tanstack/react-router';
-import { Bot, Grid, Wrench } from 'lucide-react';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import * as React from 'react';
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { session } = useRouteContext({ from: '/app' });
   const matchRoute = useMatchRoute();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const signOutMutation = useMutation({
-    mutationFn: authApi.signOut,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/auth/login' });
-    },
-  });
-
-  const user = {
-    name: session?.user?.name ?? session?.name ?? 'Account',
-    email: session?.user?.email ?? session?.email ?? '',
-    avatar:
-      session?.user?.avatar ??
-      session?.user?.avatarUrl ??
-      session?.avatar ??
-      '',
-  };
 
   const isJarvisActive = Boolean(matchRoute({ to: '/app', fuzzy: false }));
   const isIntegrationsActive = Boolean(
@@ -54,15 +26,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   return (
-    <Sidebar variant="sidebar" {...props} className='border-r-0!'>
-      
+    <Sidebar variant="sidebar" {...props} className="border-r-0!">
       <SidebarHeader
         className="h-[52px] p-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       />
 
       <SidebarContent className="gap-0">
-        {/* Navigation */}
         <SidebarGroup className="px-3 py-2">
           <SidebarMenu className="gap-1">
             <SidebarMenuItem>
@@ -73,21 +43,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive={isJarvisActive}
               >
                 <Link to="/app">
-                  <Bot className="h-4 w-4" />
-                  <span>Jarvis</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                tooltip="Integrations"
-                className="h-9"
-                isActive={isIntegrationsActive}
-              >
-                <Link to="/app/integrations">
-                  <Grid className="h-4 w-4" />
-                  <span>Integrations</span>
+                  <IconBubble4 className="h-4 w-4" />
+                  <span>Chat</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -99,8 +56,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive={isSkillsActive}
               >
                 <Link to="/app/skills">
-                  <Wrench className="h-4 w-4" />
+                  <IconBlocks className="h-4 w-4" />
                   <span>Skills</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Skills"
+                className="h-9"
+                isActive={isSkillsActive}
+              >
+                <Link to="/app/skills">
+                  <IconCalendarClock className="h-4 w-4" />
+                  <span>Scheduled</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Integrations"
+                className="h-9"
+                isActive={isIntegrationsActive}
+              >
+                <Link to="/app/integrations">
+                  <IconIntegrations className="h-4 w-4" />
+                  <span>Tools</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -108,18 +91,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-      <SidebarMenuItem className="list-none">
+      <SidebarFooter className="gap-0">
+        <SidebarMenuItem className="list-none">
           <SidebarMenuButton>
             <a href={`mailto:support@clawpilot.ai`}>
-            <span>Report a bug</span>
+              <span>Report a bug</span>
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem className="list-none">
           <SidebarMenuButton>
             <a href={`mailto:support@clawpilot.ai`}>
-            <span>Contact support</span>
+              <span>Contact support</span>
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>

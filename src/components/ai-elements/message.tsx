@@ -44,7 +44,7 @@ export const MessageContent = ({
   <div
     className={cn(
       'flex w-fit min-w-0 max-w-full flex-col gap-1.5 overflow-hidden text-sm leading-relaxed',
-      'group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-br-sm group-[.is-user]:bg-muted group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:text-foreground',
+      'group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-br-sm group-[.is-user]:bg-neutral-a4 group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:text-foreground',
       'group-[.is-assistant]:text-foreground',
       className
     )}
@@ -76,7 +76,7 @@ export const MessageAction = ({
   children,
   label,
   variant = 'ghost',
-  size = 'icon-sm',
+  size = 'iconSm',
   ...props
 }: MessageActionProps) => {
   const button = (
@@ -243,7 +243,7 @@ export const MessageBranchPrevious = ({
       aria-label="Previous branch"
       disabled={totalBranches <= 1}
       onClick={goToPrevious}
-      size="icon-sm"
+      size="iconSm"
       type="button"
       variant="ghost"
       {...props}
@@ -266,7 +266,7 @@ export const MessageBranchNext = ({
       aria-label="Next branch"
       disabled={totalBranches <= 1}
       onClick={goToNext}
-      size="icon-sm"
+      size="iconSm"
       type="button"
       variant="ghost"
       {...props}

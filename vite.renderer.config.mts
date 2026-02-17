@@ -15,7 +15,7 @@ export default defineConfig({
     }),
     react(),
     svgr({
-      include: '**/*.svg',
+      include: ['**/*.svg', '**/*.svg?*'],
     }),
     babel({
       babelHelpers: 'bundled',

@@ -1,6 +1,4 @@
-'use client';
-
-import { BadgeCheck, ChevronsUpDown, CreditCard, LogOut } from 'lucide-react';
+import { BadgeCheck, CreditCard, LogOut } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -12,23 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
+import { authApi } from '@/lib/auth-api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useRouteContext } from '@tanstack/react-router';
 import { ThemeToggle } from './theme-toggle';
-
-type NavUserProps = {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    avatar?: string | null;
-  };
-  onSignOut?: () => void;
-  isSigningOut?: boolean;
-};
+import { ThemeTogglerButton } from './animate-ui/components/buttons/theme-toggler';
 
 const getInitials = (value?: string | null) => {
   if (!value) {
@@ -44,91 +30,88 @@ const getInitials = (value?: string | null) => {
     .toUpperCase();
 };
 
-export function NavUser({ user, onSignOut, isSigningOut }: NavUserProps) {
-  const { isMobile } = useSidebar();
+export function NavUser() {
+  const { session } = useRouteContext({ from: '/app' });
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const signOutMutation = useMutation({
+    mutationFn: authApi.signOut,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['session'] });
+      navigate({ to: '/auth/login' });
+    },
+  });
 
+  const user = {
+    name: session?.user?.name ?? session?.name ?? 'Account',
+    email: session?.user?.email ?? session?.email ?? '',
+    avatar:
+      session?.user?.avatar ??
+      session?.user?.avatarUrl ??
+      session?.avatar ??
+      '',
+  };
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-lg"
-            >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage
-                  src={user.avatar ?? undefined}
-                  alt={user.name ?? 'User'}
-                />
-                <AvatarFallback className="rounded-lg">
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {user.name ?? 'Account'}
-                </span>
-                {user.email ? (
-                  <span className="truncate text-xs">{user.email}</span>
-                ) : null}
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage
-                    src={user.avatar ?? undefined}
-                    alt={user.name ?? 'User'}
-                  />
-                  <AvatarFallback className="rounded-lg">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {user.name ?? 'Account'}
-                  </span>
-                  {user.email ? (
-                    <span className="truncate text-xs">{user.email}</span>
-                  ) : null}
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <ThemeToggle />
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={isSigningOut}
-              onSelect={event => {
-                event.preventDefault();
-                onSignOut?.();
-              }}
-            >
-              <LogOut />
-              {isSigningOut ? 'Signing out' : 'Log out'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Avatar>
+          <AvatarImage
+            src={user.avatar ?? undefined}
+            alt={user.name ?? 'User'}
+          />
+          <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+        align="end"
+        sideOffset={4}
+      >
+        <DropdownMenuLabel className="p-0 font-normal">
+          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+            <Avatar className="h-8 w-8 rounded-lg">
+              <AvatarImage
+                src={user.avatar ?? undefined}
+                alt={user.name ?? 'User'}
+              />
+              <AvatarFallback className="rounded-lg">
+                {getInitials(user.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">
+                {user.name ?? 'Account'}
+              </span>
+              {user.email ? (
+                <span className="truncate text-xs">{user.email}</span>
+              ) : null}
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem>
+            <BadgeCheck />
+            Account
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <CreditCard />
+            Billing
+          </DropdownMenuItem>
+          <ThemeToggle />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={signOutMutation.isPending}
+          onSelect={event => {
+            event.preventDefault();
+            signOutMutation.mutate();
+          }}
+        >
+          <LogOut />
+          {signOutMutation.isPending ? 'Signing out' : 'Log out'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

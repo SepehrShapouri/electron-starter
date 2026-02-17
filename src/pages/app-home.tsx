@@ -272,7 +272,7 @@ export default function AppHome() {
         )}
         <PromptInput
           onSubmit={({ text }) => sendMessage(text)}
-          className="[&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-border/50 [&_[data-slot=input-group]]:bg-muted/30 [&_[data-slot=input-group]]:shadow-sm [&_[data-slot=input-group]]:transition-shadow [&:focus-within_[data-slot=input-group]]:shadow-md [&:focus-within_[data-slot=input-group]]:border-border"
+          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy"
         >
           <PromptInputBody>
             <PromptInputTextarea
@@ -281,14 +281,11 @@ export default function AppHome() {
             />
           </PromptInputBody>
           <PromptInputFooter className="items-center">
-            <p className="px-2 text-xs text-muted-foreground/70">
-              {connected ? '⇧ Enter for newline' : 'Establishing connection…'}
-            </p>
             <PromptInputSubmit
               status={submitStatus}
               disabled={!connected}
               onStop={abort}
-              className="rounded-xl"
+              className="ml-auto"
             />
           </PromptInputFooter>
         </PromptInput>
