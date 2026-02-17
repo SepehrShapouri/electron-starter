@@ -54,7 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   return (
-    <Sidebar variant="sidebar" {...props}>
+    <Sidebar variant="sidebar" {...props} className='border-r-0!'>
       
       <SidebarHeader
         className="h-[52px] p-0"
@@ -108,12 +108,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <NavUser
-          user={user}
-          onSignOut={() => signOutMutation.mutate()}
-          isSigningOut={signOutMutation.isPending}
-        />
+      <SidebarFooter>
+      <SidebarMenuItem className="list-none">
+          <SidebarMenuButton>
+            <a href={`mailto:support@clawpilot.ai`}>
+            <span>Report a bug</span>
+            </a>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem className="list-none">
+          <SidebarMenuButton>
+            <a href={`mailto:support@clawpilot.ai`}>
+            <span>Contact support</span>
+            </a>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarFooter>
     </Sidebar>
   );

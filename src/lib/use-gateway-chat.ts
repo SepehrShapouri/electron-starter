@@ -2,17 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { ToolUIPart } from 'ai';
 import { GatewayClient, type GatewayEventFrame } from './gateway-client';
 import { extractText } from './message-extract';
-import { parseToolInvocations, toToolUIParts } from './parse-tools';
 
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   status?: 'streaming' | 'final' | 'error';
-  parts?: ToolUIPart[];
 };
 
 export type GatewayChatStatus =
@@ -35,6 +32,30 @@ type SessionDefaultsSnapshot = {
   mainSessionKey?: string;
   scope?: string;
 };
+
+const GATEWAY_WS_PORT = '18789';
+
+function toGatewayWebSocketUrl(rawGatewayUrl: string): string {
+  const raw = rawGatewayUrl.trim();
+  if (!raw) return '';
+
+  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
+  const parsed = new URL(hasScheme ? raw : `ws://${raw}`);
+
+  if (parsed.protocol === 'http:') {
+    parsed.protocol = 'ws:';
+  } else if (parsed.protocol === 'https:') {
+    parsed.protocol = 'wss:';
+  } else if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
+    throw new Error(`Unsupported gateway URL protocol: ${parsed.protocol}`);
+  }
+
+  if (!parsed.port) {
+    parsed.port = GATEWAY_WS_PORT;
+  }
+
+  return parsed.toString();
+}
 
 function normalizeSessionKeyForDefaults(
   value: string,
@@ -64,25 +85,16 @@ type HistoryItem = {
   content: string;
 };
 
-type ToolStatus = {
-  name: string;
-  phase: 'start' | 'update';
-};
-
-type ToolEvent = {
-  id: string;
-  name: string;
-  input?: Record<string, unknown>;
-  output?: unknown;
-  error?: string;
-  state: 'running' | 'completed' | 'error';
-};
-
 function toHistoryItems(messages: unknown[]): HistoryItem[] {
   return messages
     .map(message => {
       const m = message as Record<string, unknown>;
-      const role = m.role === 'assistant' ? 'assistant' : m.role === 'user' ? 'user' : null;
+      const role =
+        m.role === 'assistant'
+          ? 'assistant'
+          : m.role === 'user'
+            ? 'user'
+            : null;
       if (!role) return null;
       const content = extractText(message) ?? '';
       return { role, content } satisfies HistoryItem;
@@ -103,7 +115,10 @@ function historyEquals(a: HistoryItem[], b: HistoryItem[]): boolean {
 function historyIsPrefix(prefix: HistoryItem[], full: HistoryItem[]): boolean {
   if (prefix.length > full.length) return false;
   for (let i = 0; i < prefix.length; i += 1) {
-    if (prefix[i]?.role !== full[i]?.role || prefix[i]?.content !== full[i]?.content) {
+    if (
+      prefix[i]?.role !== full[i]?.role ||
+      prefix[i]?.content !== full[i]?.content
+    ) {
       return false;
     }
   }
@@ -117,8 +132,6 @@ export function useGatewayChat(config: GatewayChatConfig) {
   const [resolvedSessionKey, setResolvedSessionKey] = useState(
     normalizeSessionKeyForDefaults(config.sessionKey)
   );
-  const [toolStatus, setToolStatus] = useState<ToolStatus | null>(null);
-  const [toolEvents, setToolEvents] = useState<Map<string, ToolEvent>>(new Map());
   const sessionKeyRef = useRef(resolvedSessionKey);
   const clientRef = useRef<GatewayClient | null>(null);
   const runToMessageId = useRef(new Map<string, string>());
@@ -149,38 +162,26 @@ export function useGatewayChat(config: GatewayChatConfig) {
           );
           const extra = history
             .slice(prevHistory.length)
-            .map(
-              (item, index): ChatMessage => {
-                const messageId = `${item.role}-history-${prevHistory.length + index}`;
-                const rawMessage = rawMessages[prevHistory.length + index];
-                const tools = parseToolInvocations(rawMessage);
-                const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
-                return {
-                  id: messageId,
-                  role: item.role,
-                  content: item.content,
-                  status: 'final',
-                  parts,
-                };
-              }
-            );
+            .map((item, index): ChatMessage => {
+              const messageId = `${item.role}-history-${prevHistory.length + index}`;
+              return {
+                id: messageId,
+                role: item.role,
+                content: item.content,
+                status: 'final',
+              };
+            });
           return [...finalized, ...extra];
         }
-        return history.map(
-          (item, index): ChatMessage => {
-            const messageId = `${item.role}-history-${index}`;
-            const rawMessage = rawMessages[index];
-            const tools = parseToolInvocations(rawMessage);
-            const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
-            return {
-              id: messageId,
-              role: item.role,
-              content: item.content,
-              status: 'final',
-              parts,
-            };
-          }
-        );
+        return history.map((item, index): ChatMessage => {
+          const messageId = `${item.role}-history-${index}`;
+          return {
+            id: messageId,
+            role: item.role,
+            content: item.content,
+            status: 'final',
+          };
+        });
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -201,47 +202,10 @@ export function useGatewayChat(config: GatewayChatConfig) {
 
   const handleEvent = useCallback(
     (evt: GatewayEventFrame) => {
-      if (evt.event === 'agent') {
-        const payload = evt.payload as
-          | {
-              stream?: string;
-              sessionKey?: string;
-              data?: {
-                phase?: string;
-                name?: string;
-                isError?: boolean;
-                result?: unknown;
-              };
-            }
-          | undefined;
-        console.log('🎯 Agent event:', evt, 'stream:', payload?.stream);
-        if (!payload) return;
-        if (payload.stream !== 'tool') {
-          console.log('⏭️ Skipping non-tool stream:', payload.stream);
-          return;
-        }
-        if (
-          payload.sessionKey &&
-          payload.sessionKey !== sessionKeyRef.current
-        ) {
-          return;
-        }
-        const phase = payload.data?.phase;
-        const name = payload.data?.name;
-        if (typeof phase !== 'string' || typeof name !== 'string') {
-          return;
-        }
-        console.log('🔧 Tool event:', { phase, name, data: payload.data });
-        if (phase === 'result') {
-          setToolStatus(null);
-          return;
-        }
-        if (phase === 'start' || phase === 'update') {
-          setToolStatus({ name, phase });
-        }
+      if (evt.event !== 'chat') {
         return;
       }
-      if (evt.event !== 'chat') return;
+
       const payload = evt.payload as
         | {
             runId: string;
@@ -261,14 +225,10 @@ export function useGatewayChat(config: GatewayChatConfig) {
         messageId &&
         typeof nextText === 'string'
       ) {
-        console.log('📦 Delta message:', payload.message);
-        const tools = parseToolInvocations(payload.message);
-        console.log('🔧 Parsed tools:', tools);
-        const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
         setMessages(prev =>
           prev.map(item =>
             item.id === messageId
-              ? { ...item, content: nextText, status: 'streaming', parts }
+              ? { ...item, content: nextText, status: 'streaming' }
               : item
           )
         );
@@ -278,10 +238,6 @@ export function useGatewayChat(config: GatewayChatConfig) {
       if (payload.state === 'final') {
         setStatus('ready');
         if (messageId) {
-          console.log('✅ Final message:', payload.message);
-          const tools = parseToolInvocations(payload.message);
-          console.log('🔧 Parsed tools (final):', tools);
-          const parts = tools.length > 0 ? toToolUIParts(tools, messageId) : undefined;
           setMessages(prev =>
             prev.map(item =>
               item.id === messageId
@@ -289,7 +245,6 @@ export function useGatewayChat(config: GatewayChatConfig) {
                     ...item,
                     content: nextText ?? item.content,
                     status: 'final',
-                    parts,
                   }
                 : item
             )
@@ -324,8 +279,25 @@ export function useGatewayChat(config: GatewayChatConfig) {
     if (clientRef.current) return;
     setStatus('connecting');
     setError(null);
+
+    let gatewaySocketUrl = '';
+    try {
+      gatewaySocketUrl = toGatewayWebSocketUrl(config.gatewayUrl);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setStatus('error');
+      setError(message);
+      return;
+    }
+
+    if (!gatewaySocketUrl) {
+      setStatus('error');
+      setError('Missing gateway URL');
+      return;
+    }
+
     const client = new GatewayClient({
-      url: config.gatewayUrl,
+      url: gatewaySocketUrl,
       token: config.token?.trim() || undefined,
       password: config.password?.trim() || undefined,
       onHello: hello => {
@@ -351,7 +323,13 @@ export function useGatewayChat(config: GatewayChatConfig) {
     });
     client.connect();
     clientRef.current = client;
-  }, [applySessionDefaults, config.gatewayUrl, config.password, config.token, handleEvent]);
+  }, [
+    applySessionDefaults,
+    config.gatewayUrl,
+    config.password,
+    config.token,
+    handleEvent,
+  ]);
 
   const disconnect = useCallback(() => {
     clientRef.current?.disconnect();
@@ -428,7 +406,6 @@ export function useGatewayChat(config: GatewayChatConfig) {
     }
   }, [resolvedSessionKey]);
 
-
   useEffect(() => {
     const next = normalizeSessionKeyForDefaults(
       config.sessionKey,
@@ -456,7 +433,6 @@ export function useGatewayChat(config: GatewayChatConfig) {
     status,
     error,
     messages,
-    toolStatus,
     connected,
     connect,
     disconnect,

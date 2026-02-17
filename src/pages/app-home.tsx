@@ -8,7 +8,7 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -27,38 +27,18 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from '../components/ai-elements/tool';
 import { authApi } from '../lib/auth-api';
-import {
-  loadGatewayProfile,
-  saveGatewayProfile,
-  type GatewayProfile,
-} from '../lib/gateway-storage';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 
 export default function AppHome() {
-  const [profile, setProfile] = useState<GatewayProfile | null>(() =>
-    loadGatewayProfile()
-  );
-
   const provisionQuery = useQuery({
     queryKey: ['gateway-provision'],
     queryFn: authApi.provisionGateway,
-    enabled: !profile,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
-  useEffect(() => {
-    if (provisionQuery.data && !profile) {
-      saveGatewayProfile(provisionQuery.data);
-      setProfile(provisionQuery.data);
-    }
-  }, [provisionQuery.data, profile]);
+  const profile = provisionQuery.data ?? null;
 
   const chatConfig = useMemo(
     () => ({
@@ -73,7 +53,6 @@ export default function AppHome() {
     status,
     error,
     messages,
-    toolStatus,
     connected,
     connect,
     disconnect,
@@ -207,36 +186,8 @@ export default function AppHome() {
                         </div>
                       ) : (
                         <>
-                          {message.role === 'assistant' && message.parts?.map((part, idx) => (
-                            <Tool
-                              key={`${message.id}-tool-${idx}`}
-                              defaultOpen={
-                                part.state === 'output-available' ||
-                                part.state === 'output-error'
-                              }
-                            >
-                              <ToolHeader type={part.type} state={part.state} />
-                              <ToolContent>
-                                <ToolInput input={part.input} />
-                                <ToolOutput
-                                  output={
-                                    part.output ? (
-                                      <MessageResponse>
-                                        {typeof part.output === 'string'
-                                          ? part.output
-                                          : JSON.stringify(part.output, null, 2)}
-                                      </MessageResponse>
-                                    ) : undefined
-                                  }
-                                  errorText={part.errorText}
-                                />
-                              </ToolContent>
-                            </Tool>
-                          ))}
                           {message.content && (
-                            <MessageResponse>
-                              {message.content}
-                            </MessageResponse>
+                            <MessageResponse>{message.content}</MessageResponse>
                           )}
                         </>
                       )}
@@ -245,24 +196,6 @@ export default function AppHome() {
                 );
               })
             )}
-            {toolStatus ? (
-              <Message from="assistant">
-                <MessageContent className="text-muted-foreground">
-                  <div className="inline-flex items-center gap-2">
-                    <span className="text-xs uppercase tracking-wide">
-                      Tool
-                    </span>
-                    <span className="text-xs">{toolStatus.name}</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="sr-only">Tool running</span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
-                    </span>
-                  </div>
-                </MessageContent>
-              </Message>
-            ) : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -303,7 +236,7 @@ export default function AppHome() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size="iconSm"
                   className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
                   onClick={reconnect}
                   aria-label="Dismiss error"

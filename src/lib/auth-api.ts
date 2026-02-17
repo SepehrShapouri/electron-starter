@@ -45,21 +45,21 @@ export const authApi = {
       }),
   provisionGateway: () =>
     apiClient
-      .get<GatewayProvision>('/api/v1/provision')
+      .get<GatewayProvision>('/api/v1/infra/provision')
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),
   getOnboarding: () =>
     apiClient
-      .get<OnboardingProfile>('/api/v1/onboarding')
+      .get<OnboardingProfile>('/api/v1/infra/onboarding')
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),
   saveOnboarding: (payload: Partial<OnboardingProfile>) =>
     apiClient
-      .post<OnboardingProfile>('/api/v1/onboarding', payload)
+      .post<OnboardingProfile>('/api/v1/infra/onboarding', payload)
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
