@@ -14,7 +14,7 @@ export const Route = createFileRoute('/app')({
       .catch(() => null);
 
     if (!session) {
-      throw redirect({ to: '/auth/login' });
+      throw redirect({ to: '/auth/welcome' });
     }
 
     return { session };

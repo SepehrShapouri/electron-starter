@@ -1,22 +1,20 @@
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import Clawpilot from '@/components/icons/Clawpilot.svg';
+import Google from '@/components/icons/Google.svg';
+import IconMagicWand2 from '@/components/icons/IconMagicWand2.svg';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import AuthLayout from '../components/auth/auth-layout';
-import { authApi } from '../lib/auth-api';
-import logoUrl from '../assets/clawpilot-full.png';
 import { z } from 'zod';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import gsap from 'gsap';
+import { authApi } from '@/lib/auth-api';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -26,6 +24,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const {
@@ -57,70 +58,163 @@ export default function Login() {
   const onSubmit = (values: LoginFormValues) => {
     signInMutation.mutate(values);
   };
+
+  useEffect(() => {
+    const tween = gsap.fromTo(
+      containerRef.current,
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }
+    );
+
+    return () => {
+      tween.kill();
+    };
+  }, []);
+
+  const navigateWithExit = (to: '/auth/welcome' | '/auth/signup') => {
+    gsap
+      .timeline({
+        onComplete: () => {
+          navigate({ to });
+        },
+      })
+      .to(containerRef.current, {
+        opacity: 0,
+        y: to === '/auth/welcome' ? 20 : -20,
+        duration: 0.35,
+        ease: 'power2.in',
+      });
+  };
+
   return (
-    <AuthLayout>
-      <div className={cn('flex flex-col gap-6')}>
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FieldGroup>
-            <div className="flex flex-col items-center gap-2 text-center">
-              <img
-                src={logoUrl}
-                alt="Clawpilot"
-                className="object-contain h-10"
-              />
-              <span className="sr-only">clawpilot</span>
-              <FieldDescription>
-                Don&apos;t have an account?{' '}
-                <Link
-                  to="/auth/signup"
-                  className="text-foreground/80 hover:text-foreground"
-                >
-                  Sign up
-                </Link>
-              </FieldDescription>
-            </div>
-            {!!errors.root && (
-              <Alert variant="destructive">
-                <AlertTitle>Something went wrong</AlertTitle>
-                <AlertDescription>{errors.root.message}</AlertDescription>
-              </Alert>
+    <div ref={containerRef} className={cn('flex flex-col gap-6')}>
+      <button
+        onClick={() => navigateWithExit('/auth/welcome')}
+        className="flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+        type="button"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </button>
+
+      <div className="flex flex-col gap-3">
+        <Clawpilot className="h-9 w-9 text-muted-foreground" />
+        <h1 className="text-2xl font-light tracking-tight text-foreground">
+          Welcome back.
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to your clawpilot account.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="email" className="sr-only">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Email"
+              autoComplete="email"
+              aria-invalid={!!errors.email}
+              className="h-11"
+              autoFocus
+              {...register('email')}
+            />
+            {errors.email?.message && (
+              <p className="text-xs text-red-9">{errors.email.message}</p>
             )}
-            <Field data-invalid={!!errors.email}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                autoComplete="email"
-                aria-invalid={!!errors.email}
-                {...register('email')}
-              />
-              <FieldError errors={[errors.email]} />
-            </Field>
-            <Field data-invalid={!!errors.password}>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="relative">
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
               <Input
                 id="password"
-                type="password"
-                placeholder="********"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
                 autoComplete="current-password"
                 aria-invalid={!!errors.password}
+                className="h-11 pr-10"
                 {...register('password')}
               />
-              <FieldError errors={[errors.password]} />
-            </Field>
-            <Field>
-              <Button type="submit" disabled={signInMutation.isPending}>
-                Login
-              </Button>
-            </Field>
-          </FieldGroup>
-        </form>
-        <FieldDescription className="px-6 text-center">
-          By clicking continue, you agree to our{' '}
-          <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-        </FieldDescription>
+              <button
+                type="button"
+                onClick={() => setShowPassword(show => !show)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {errors.password?.message && (
+              <p className="text-xs text-red-9">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
+
+          {!!errors.root && (
+            <Alert variant="secondaryDestructive">
+              <AlertTitle>Something went wrong</AlertTitle>
+              <AlertDescription>{errors.root.message}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            disabled={signInMutation.isPending}
+            className="h-11 w-full"
+          >
+            {signInMutation.isPending ? 'Signing in...' : 'Sign in'}
+          </Button>
+        </div>
+      </form>
+
+      <div className="my-2 flex items-center gap-6">
+        <Separator className="flex-1" />
+        <span className="text-sm text-muted-foreground">Or continue with</span>
+        <Separator className="flex-1" />
       </div>
-    </AuthLayout>
+
+      <div className="flex flex-col gap-3">
+        <Button type="button" variant="outline" size="xl" className="w-full">
+          <Google />
+          Continue with Google
+        </Button>
+
+        <Button type="button" variant="outline" size="xl" className="w-full">
+          <IconMagicWand2 />
+          Get a Magic Link
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
+        <span>Don&apos;t have an account?</span>
+        <Link
+          to="/auth/signup"
+          onClick={event => {
+            event.preventDefault();
+            navigateWithExit('/auth/signup');
+          }}
+          className="text-foreground/80 transition-colors hover:text-foreground"
+        >
+          Sign up
+        </Link>
+      </div>
+
+      <p className="px-2 text-center text-xs text-muted-foreground">
+        By clicking continue, you agree to our <a href="#">Terms of Service</a>{' '}
+        and <a href="#">Privacy Policy</a>.
+      </p>
+    </div>
   );
 }

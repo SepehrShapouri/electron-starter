@@ -9,11 +9,10 @@ import { Toaster } from '@/components/ui/sonner';
 
 const queryClient = new QueryClient();
 
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <RouterProvider router={router} context={{ queryClient }} />

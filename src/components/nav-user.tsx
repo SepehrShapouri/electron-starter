@@ -37,7 +37,7 @@ export function NavUser() {
     mutationFn: authApi.signOut,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/auth/login' });
+      navigate({ to: '/auth/welcome' });
     },
   });
 
