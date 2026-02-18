@@ -32,6 +32,30 @@ export type OnboardingProfile = {
   completed?: boolean;
 };
 
+export type BillingStatus = {
+  status: string | null;
+  subscriptionId: string | null;
+  customerId: string | null;
+  isActive: boolean;
+};
+
+export type CheckoutResponse = {
+  url: string;
+};
+
+export type OnboardingEncryptionKeyResponse = {
+  key: string;
+};
+
+export type OnboardingCheckoutPayload = {
+  encryptedPayload?: string;
+  useElectronRedirect?: boolean;
+};
+
+export type OnboardingProvisionPayload = {
+  encryptedPayload: string;
+};
+
 export const authApi = {
   getSession: async () => {
     try {
@@ -115,6 +139,34 @@ export const authApi = {
   saveOnboarding: (payload: Partial<OnboardingProfile>) =>
     apiClient
       .post<OnboardingProfile>('/api/v1/infra/onboarding', payload)
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  getBillingStatus: () =>
+    apiClient
+      .get<BillingStatus>('/api/v1/infra/billing/status')
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  createOnboardingCheckoutSession: (payload: OnboardingCheckoutPayload) =>
+    apiClient
+      .post<CheckoutResponse>('/api/v1/infra/billing/checkout', payload)
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  getOnboardingEncryptionKey: () =>
+    apiClient
+      .get<OnboardingEncryptionKeyResponse>('/api/v1/infra/onboarding/encryption-key')
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  provisionFromOnboarding: (payload: OnboardingProvisionPayload) =>
+    apiClient
+      .post<GatewayProvision>('/api/v1/infra/provision', payload)
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));

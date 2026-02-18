@@ -40,7 +40,7 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
   });
 
   const continuePath = useMemo(() => {
-    return isSignUp ? '/auth/welcome' : '/app';
+    return isSignUp ? '/onboarding' : '/app';
   }, [isSignUp]);
 
   const handleSendMagicLink = async (event: FormEvent<HTMLFormElement>) => {
