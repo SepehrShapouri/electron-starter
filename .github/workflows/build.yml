@@ -182,6 +182,7 @@ jobs:
           tag_name: ${{ steps.release-tag.outputs.tag }}
           name: ${{ steps.release-tag.outputs.name }}
           repository: ${{ env.RELEASES_REPOSITORY }}
+          target_commitish: main
           files: |
             electron-app-macos/**/*
           draft: false
