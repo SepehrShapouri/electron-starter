@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import Clawpilot from '@/components/icons/Clawpilot.svg';
 import { authApi } from '@/lib/auth-api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -10,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DeployCard } from '@/features/onboarding/components/deploy-card';
 import { IntegrationsCard } from '@/features/onboarding/components/integrations-card';
 import { ModelSelectCard } from '@/features/onboarding/components/model-select-card';
-import { StepIndicator } from '@/features/onboarding/components/step-indicator';
+import gsap from 'gsap';
 
 type KeySource = 'credits' | 'byok';
 
@@ -26,8 +27,6 @@ type OnboardingPageProps = {
   encryptedData?: string;
 };
 
-const TOTAL_STEPS = 3;
-const STEP_LABELS = ['Model', 'Integrations', 'Deploy'];
 const PENDING_ONBOARDING_PAYLOAD_KEY = 'clawpilot:pending_onboarding_payload';
 
 const isPaidStatus = (status: string | null) =>
@@ -38,19 +37,25 @@ const getErrorMessage = (error: unknown) =>
 
 async function encryptPayload(
   base64urlKey: string,
-  data: OnboardingSecrets,
+  data: OnboardingSecrets
 ): Promise<string> {
   const raw = Uint8Array.from(
     atob(base64urlKey.replace(/-/g, '+').replace(/_/g, '/')),
-    c => c.charCodeAt(0),
+    c => c.charCodeAt(0)
   );
   const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, [
     'encrypt',
   ]);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(JSON.stringify(data));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-  const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoded
+  );
+  const combined = new Uint8Array(
+    iv.length + new Uint8Array(ciphertext).length
+  );
   combined.set(iv);
   combined.set(new Uint8Array(ciphertext), iv.length);
   return btoa(String.fromCharCode(...combined))
@@ -83,12 +88,14 @@ export default function OnboardingPage({
   checkoutStatus,
   encryptedData,
 }: OnboardingPageProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stepContentRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [selectedModel, setSelectedModel] = useState('anthropic');
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(
-    'telegram',
+    'telegram'
   );
   const [botToken, setBotToken] = useState('');
   const [keySource, setKeySource] = useState<KeySource>('credits');
@@ -105,7 +112,8 @@ export default function OnboardingPage({
   });
 
   const isSubscribed = Boolean(
-    billingQuery.data?.isActive || isPaidStatus(billingQuery.data?.status ?? null),
+    billingQuery.data?.isActive ||
+    isPaidStatus(billingQuery.data?.status ?? null)
   );
 
   const subscribeMutation = useMutation({
@@ -150,6 +158,34 @@ export default function OnboardingPage({
   };
 
   useEffect(() => {
+    const tween = gsap.fromTo(
+      containerRef.current,
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }
+    );
+
+    return () => {
+      tween.kill();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!stepContentRef.current) {
+      return;
+    }
+
+    const tween = gsap.fromTo(
+      stepContentRef.current,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
+    );
+
+    return () => {
+      tween.kill();
+    };
+  }, [step]);
+
+  useEffect(() => {
     if (checkoutStatus !== 'success' && !encryptedData) {
       return;
     }
@@ -160,7 +196,9 @@ export default function OnboardingPage({
 
     const payload = encryptedData ?? getPendingPayload();
     if (!payload) {
-      setErrorMessage('Could not recover your onboarding payload. Please retry checkout.');
+      setErrorMessage(
+        'Could not recover your onboarding payload. Please retry checkout.'
+      );
       return;
     }
 
@@ -227,6 +265,16 @@ export default function OnboardingPage({
     setStep(step - 1);
   };
 
+  const handleSkip = () => {
+    if (step !== 2) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSelectedIntegration(null);
+    setStep(3);
+  };
+
   const handleSubscribe = async () => {
     if (subscribeMutation.isPending) {
       return;
@@ -238,7 +286,8 @@ export default function OnboardingPage({
         model: selectedModel,
         apiKey: isByok ? apiKey : undefined,
         keySource,
-        telegramBotKey: selectedIntegration === 'telegram' ? botToken.trim() : undefined,
+        telegramBotKey:
+          selectedIntegration === 'telegram' ? botToken.trim() : undefined,
       });
       setPendingPayload(encryptedPayload);
       subscribeMutation.mutate({
@@ -252,9 +301,14 @@ export default function OnboardingPage({
 
   if (provisionState === 'launching') {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
+      <div
+        ref={containerRef}
+        className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-4 px-6 py-20"
+      >
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-lg font-semibold text-foreground">Launching your agent...</p>
+        <p className="text-2xl font-light tracking-tight text-foreground">
+          Launching your agent...
+        </p>
         <p className="text-sm text-muted-foreground">
           Payment received. Setting up your instance now.
         </p>
@@ -264,9 +318,14 @@ export default function OnboardingPage({
 
   if (provisionState === 'failed') {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-20">
+      <div
+        ref={containerRef}
+        className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-6 px-6 py-20"
+      >
         <div className="flex flex-col items-center gap-2">
-          <p className="text-lg font-semibold text-foreground">Something went wrong</p>
+          <p className="text-2xl font-light tracking-tight text-foreground">
+            Something went wrong
+          </p>
           <p className="max-w-md text-center text-sm text-muted-foreground">
             Your payment was successful, but we had trouble launching your
             agent.
@@ -286,7 +345,9 @@ export default function OnboardingPage({
           onClick={() => {
             const payload = encryptedData ?? getPendingPayload();
             if (!payload) {
-              setErrorMessage('Missing onboarding payload. Start checkout again.');
+              setErrorMessage(
+                'Missing onboarding payload. Start checkout again.'
+              );
               return;
             }
 
@@ -301,140 +362,163 @@ export default function OnboardingPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-10">
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          onClick={() => signOutMutation.mutate()}
-          disabled={signOutMutation.isPending}
-        >
-          {signOutMutation.isPending ? 'Signing out...' : 'Log out'}
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        <StepIndicator totalSteps={TOTAL_STEPS} currentStep={step} labels={STEP_LABELS} />
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
-            {step === 1
-              ? 'Pick a model'
-              : step === 2
-                ? 'Connect an integration'
-                : 'Launch your agent'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {step === 1
-              ? 'This powers your agent responses. You can switch it later.'
-              : step === 2
-                ? 'Choose where your agent will live. You can add more later.'
-                : 'Confirm your setup and subscribe to get your agent live.'}
-          </p>
+    <div className="h-svh overflow-y-auto">
+      <div
+        ref={containerRef}
+        className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6"
+      >
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => signOutMutation.mutate()}
+            disabled={signOutMutation.isPending}
+          >
+            {signOutMutation.isPending ? 'Signing out...' : 'Log out'}
+          </Button>
         </div>
-      </div>
 
-      {checkoutStatus === 'cancel' && (
-        <Alert variant="secondaryWarning">
-          <Info />
-          <AlertTitle>Checkout canceled</AlertTitle>
-          <AlertDescription>
-            No worries. Your onboarding settings are still here.
-          </AlertDescription>
-        </Alert>
-      )}
+        <div className="flex flex-col gap-3">
+          <Clawpilot className="h-9 w-9 text-muted-foreground" />
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-light tracking-tight text-foreground sm:text-3xl">
+              {step === 1
+                ? 'Pick a model'
+                : step === 2
+                  ? 'Connect an integration'
+                  : 'Launch your agent'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {step === 1
+                ? 'This powers your agent responses. You can switch it later.'
+                : step === 2
+                  ? 'Choose where your agent will live. You can add more later.'
+                  : 'Confirm your setup and subscribe to get your agent live.'}
+            </p>
+          </div>
+        </div>
 
-      {step === 1 && (
-        <>
-          <ModelSelectCard selectedModel={selectedModel} onSelect={setSelectedModel} />
+        {checkoutStatus === 'cancel' && (
+          <Alert variant="secondaryWarning" className="mb-4">
+            <Info />
+            <AlertTitle>Checkout canceled</AlertTitle>
+            <AlertDescription>
+              No worries. Your onboarding settings are still here.
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-0.5">
-                <p className="text-base font-semibold text-foreground">
-                  Use your own API key
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Bring your own provider key for unlimited usage
-                </p>
-              </div>
-              <Switch
-                checked={isByok}
-                onCheckedChange={checked => {
-                  setKeySource(checked ? 'byok' : 'credits');
-                }}
+        <div ref={stepContentRef}>
+          {step === 1 && (
+            <div className="flex flex-col gap-4">
+              <ModelSelectCard
+                selectedModel={selectedModel}
+                onSelect={setSelectedModel}
               />
+
+              <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-background-2/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-base font-medium text-foreground">
+                      Use your own API key
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Bring your own provider key for unlimited usage
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isByok}
+                    onCheckedChange={checked => {
+                      setKeySource(checked ? 'byok' : 'credits');
+                    }}
+                  />
+                </div>
+
+                {isByok && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {keyInfo.label}
+                    </p>
+                    <Input
+                      size="xl"
+                      type="password"
+                      placeholder={keyInfo.placeholder}
+                      value={apiKey}
+                      onChange={event => setApiKey(event.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Get your key at{' '}
+                      <a
+                        href={keyInfo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground/80 hover:text-foreground hover:underline"
+                      >
+                        {keyInfo.urlLabel}
+                      </a>
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-            {isByok && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-foreground">{keyInfo.label}</p>
-                <Input
-                  size="xl"
-                  type="password"
-                  placeholder={keyInfo.placeholder}
-                  value={apiKey}
-                  onChange={event => setApiKey(event.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Get your key at{' '}
-                  <a
-                    href={keyInfo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-9 hover:underline"
-                  >
-                    {keyInfo.urlLabel}
-                  </a>
-                </p>
+          )}
+
+          {step === 2 && (
+            <IntegrationsCard
+              selectedIntegration={selectedIntegration}
+              onSelect={setSelectedIntegration}
+              botToken={botToken}
+              onBotTokenChange={setBotToken}
+            />
+          )}
+
+          {step === 3 && (
+            <DeployCard
+              provider={selectedModel}
+              keySource={keySource}
+              integration={
+                selectedIntegration === 'openclaw' ? null : selectedIntegration
+              }
+              isSubscribing={subscribeMutation.isPending}
+              isLoading={billingQuery.isLoading}
+              isSubscribed={isSubscribed}
+              onSubscribe={handleSubscribe}
+            />
+          )}
+        </div>
+
+        {errorMessage && (
+          <Alert variant="secondaryDestructive" className="mt-4">
+            <Info />
+            <AlertTitle>Oops!</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="mt-5 flex items-center justify-between">
+          <div>
+            {step > 1 && (
+              <Button variant="outline" size="lg" onClick={handleBack}>
+                <ArrowLeft className="size-4" />
+                Back
+              </Button>
+            )}
+          </div>
+          <div>
+            {(step === 1 || step === 2) && (
+              <div className="flex items-center gap-2">
+                {step === 2 && (
+                  <Button variant="ghost" size="lg" onClick={handleSkip}>
+                    Skip
+                  </Button>
+                )}
+                <Button size="lg" onClick={handleContinue}>
+                  Continue
+                  <ArrowRight className="size-4" />
+                </Button>
               </div>
             )}
           </div>
-        </>
-      )}
-
-      {step === 2 && (
-        <IntegrationsCard
-          selectedIntegration={selectedIntegration}
-          onSelect={setSelectedIntegration}
-          botToken={botToken}
-          onBotTokenChange={setBotToken}
-        />
-      )}
-
-      {step === 3 && (
-        <DeployCard
-          provider={selectedModel}
-          keySource={keySource}
-          integration={selectedIntegration === 'openclaw' ? null : selectedIntegration}
-          isSubscribing={subscribeMutation.isPending}
-          isLoading={billingQuery.isLoading}
-          isSubscribed={isSubscribed}
-          onSubscribe={handleSubscribe}
-        />
-      )}
-
-      {errorMessage && (
-        <Alert variant="secondaryDestructive">
-          <Info />
-          <AlertTitle>Oops!</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex items-center justify-between pt-2">
-        <div>
-          {step > 1 && (
-            <Button variant="outline" size="lg" onClick={handleBack}>
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-          )}
-        </div>
-        <div>
-          {(step === 1 || step === 2) && (
-            <Button size="lg" onClick={handleContinue}>
-              Continue
-              <ArrowRight className="size-4" />
-            </Button>
-          )}
         </div>
       </div>
     </div>

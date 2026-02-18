@@ -1,5 +1,3 @@
-import { Check } from 'lucide-react';
-
 type StepIndicatorProps = {
   totalSteps: number;
   currentStep: number;
@@ -11,49 +9,44 @@ export function StepIndicator({
   currentStep,
   labels,
 }: StepIndicatorProps) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {Array.from({ length: totalSteps }, (_, i) => {
-        const step = i + 1;
-        const isCompleted = step < currentStep;
-        const isActive = step === currentStep;
+  const progress = Math.max(0, Math.min(100, (currentStep / totalSteps) * 100));
 
-        return (
-          <div key={step} className="flex items-center gap-1.5">
-            {i > 0 && (
-              <div
-                className={`h-px w-8 transition-colors ${
-                  isCompleted || isActive ? 'bg-foreground' : 'bg-neutral-a4'
-                }`}
-              />
-            )}
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`flex size-5 items-center justify-center rounded-md text-[11px] font-medium transition-colors ${
-                  isCompleted
-                    ? 'bg-green-9 text-white'
-                    : isActive
-                      ? 'bg-foreground text-background'
-                      : 'bg-neutral-a3 text-muted-foreground'
-                }`}
-              >
-                {isCompleted ? <Check className="size-3" /> : step}
-              </div>
-              {labels?.[i] && (
-                <span
-                  className={`text-xs font-medium transition-colors ${
-                    isCompleted || isActive
-                      ? 'text-foreground'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  {labels[i]}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      })}
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Step {currentStep} of {totalSteps}
+        </span>
+        <span>{Math.round(progress)}%</span>
+      </div>
+
+      <div className="h-1 overflow-hidden rounded-full bg-background-2">
+        <div
+          className="h-full rounded-full bg-foreground/40 transition-[width] duration-300 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: totalSteps }, (_, i) => {
+          const step = i + 1;
+          const isCompleted = step < currentStep;
+          const isActive = step === currentStep;
+
+          return (
+            <span
+              key={step}
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                isCompleted || isActive
+                  ? 'border-foreground/35 bg-foreground/10 text-foreground'
+                  : 'border-border text-muted-foreground'
+              }`}
+            >
+              {labels?.[i] ?? `Step ${step}`}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

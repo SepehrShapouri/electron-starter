@@ -38,7 +38,7 @@ export function DeployCard({
   const keySourceLabel =
     keySource === 'byok' ? 'Own API key' : 'Clawpilot credits';
   const integrationLabel = integration
-    ? INTEGRATION_LABELS[integration] ?? integration
+    ? (INTEGRATION_LABELS[integration] ?? integration)
     : null;
 
   const summaryItems = [
@@ -48,20 +48,22 @@ export function DeployCard({
   ];
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="rounded-xl border border-border bg-background p-5">
-        <p className="mb-4 text-sm font-semibold text-foreground">
+    <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-border bg-background p-4 sm:p-5">
+        <p className="mb-3 text-sm font-medium tracking-tight text-foreground">
           Setup summary
         </p>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col divide-y divide-border/70">
           {summaryItems.map(item => (
             <div
               key={item.label}
-              className="flex items-center justify-between text-sm"
+              className="flex items-center justify-between py-2.5 text-sm"
             >
               <span className="text-muted-foreground">{item.label}</span>
               <span className="flex items-center gap-1.5 font-medium text-foreground">
-                {!!item.value && <Check className="size-3.5 text-green-9" />}
+                {!!item.value && (
+                  <Check className="size-3.5 text-foreground/70" />
+                )}
                 {item.value ?? '--'}
               </span>
             </div>
@@ -69,9 +71,9 @@ export function DeployCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
-        <div className="flex items-baseline justify-between">
-          <p className="text-2xl font-semibold text-foreground">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <p className="text-3xl font-light tracking-tight text-foreground">
             $25
             <span className="text-sm font-normal text-muted-foreground">
               {' '}
@@ -79,16 +81,22 @@ export function DeployCard({
             </span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Includes <span className="font-medium text-foreground">$10</span>{' '}
-            in AI credits
+            Includes <span className="font-medium text-foreground">$10</span> in
+            AI credits
           </p>
         </div>
 
+        <div className="space-y-1.5 text-xs text-muted-foreground">
+          <p>- Secure hosted runtime</p>
+          <p>- One-click deployment flow</p>
+          <p>- Add more integrations anytime</p>
+        </div>
+
         <Button
-          className="w-full"
+          className="h-11 w-full"
           variant={isSubscribed ? 'secondary' : 'default'}
           disabled={isSubscribed || isBusy}
-          size="xl"
+          size="lg"
           onClick={onSubscribe}
         >
           {isSubscribed

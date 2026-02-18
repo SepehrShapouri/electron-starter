@@ -1,5 +1,4 @@
 import IconSlack from '@/components/icons/IconSlack.svg';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   ChevronDown,
@@ -106,7 +105,7 @@ export function IntegrationsCard({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2.5">
         {INTEGRATIONS.map(integration => {
           const isSelected = selectedIntegration === integration.id;
           const Icon = integration.icon;
@@ -122,77 +121,46 @@ export function IntegrationsCard({
                   onSelect(integration.id);
                 }
               }}
-              className={`relative flex flex-col items-start gap-3 rounded-xl border-2 p-4 text-left transition-all ${
+              className={`relative flex w-full items-start justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-colors ${
                 isDisabled
-                  ? 'cursor-not-allowed border-transparent bg-background opacity-45'
+                  ? 'cursor-not-allowed border-transparent bg-background opacity-50'
                   : isSelected
-                    ? 'cursor-pointer border-foreground bg-neutral-a2'
-                    : 'cursor-pointer border-transparent bg-background hover:bg-neutral-a2'
+                    ? 'cursor-pointer border-transparent bg-neutral-a4 active:scale-99'
+                    : 'cursor-pointer border-transparent bg-transparent hover:bg-neutral-a3 active:scale-99'
               }`}
             >
-              <div className="flex w-full items-center justify-between">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-neutral-a3">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-2">
                   <Icon className="size-5" />
                 </div>
-                {isDisabled ? (
-                  <Badge variant="secondary" size="sm">
-                    Coming soon
-                  </Badge>
-                ) : isSelected ? (
-                  <Badge variant="secondaryAccent" size="sm">
-                    Selected
-                  </Badge>
-                ) : null}
+
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {integration.name}
+                  </span>
+                  <span className="text-xs leading-relaxed text-muted-foreground">
+                    {integration.description}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-semibold text-foreground">
-                  {integration.name}
-                </span>
-                <span className="text-xs leading-relaxed text-muted-foreground">
-                  {integration.description}
-                </span>
+
+              <div className="flex shrink-0 items-start gap-2">
+                {isDisabled ? (
+                  <span className="text-xs text-muted-foreground">
+                    Coming soon
+                  </span>
+                ) : null}
               </div>
             </button>
           );
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => onSelect('openclaw')}
-        className={`relative flex cursor-pointer flex-col items-start gap-3 rounded-xl border-2 p-4 text-left transition-all ${
-          selectedIntegration === 'openclaw'
-            ? 'border-foreground bg-neutral-a2'
-            : 'border-transparent bg-background hover:bg-neutral-a2'
-        }`}
-      >
-        <div className="flex w-full items-center justify-between">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-neutral-a3">
-            <img
-              src="https://mintcdn.com/clawdhub/4rYvG-uuZrMK_URE/assets/pixel-lobster.svg?fit=max&auto=format&n=4rYvG-uuZrMK_URE&q=85&s=da2032e9eac3b5d9bfe7eb96ca6a8a26"
-              className="size-5"
-              alt="OpenClaw"
-            />
-          </div>
-          {selectedIntegration === 'openclaw' && (
-            <Badge variant="secondaryAccent" size="sm">
-              Selected
-            </Badge>
-          )}
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground">
-            Use your own dashboard
-          </span>
-          <span className="text-xs leading-relaxed text-muted-foreground">
-            Chat via OpenClaw&apos;s built-in dashboard. Add integrations later.
-          </span>
-        </div>
-      </button>
-
       {selectedIntegration === 'telegram' && (
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
-          <p className="text-sm font-medium text-foreground">Enter bot token</p>
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-background-2/30 p-4">
+          <p className="text-sm font-medium tracking-tight text-foreground">
+            Enter bot token
+          </p>
 
           <div className="rounded-lg border border-border">
             <button
