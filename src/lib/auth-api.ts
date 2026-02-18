@@ -1,4 +1,8 @@
-import { apiClient, getApiErrorMessage } from './axios';
+import { apiClient, getApiErrorMessage, setAuthToken } from './axios';
+
+type AuthResult = {
+  token?: string | null;
+};
 
 export type GatewayProvision = {
   gatewayUrl: string;
@@ -25,21 +29,36 @@ export const authApi = {
   signIn: (payload: { email: string; password: string }) =>
     apiClient
       .post('/api/v1/auth/sign-in/email', payload)
-      .then(response => response.data)
+      .then(response => {
+        const data = response.data as AuthResult;
+        if (typeof data.token === 'string' && data.token.length > 0) {
+          setAuthToken(data.token);
+        }
+        return response.data;
+      })
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),
   signUp: (payload: { name: string; email: string; password: string }) =>
     apiClient
       .post('/api/v1/auth/sign-up/email', payload)
-      .then(response => response.data)
+      .then(response => {
+        const data = response.data as AuthResult;
+        if (typeof data.token === 'string' && data.token.length > 0) {
+          setAuthToken(data.token);
+        }
+        return response.data;
+      })
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),
   signOut: () =>
     apiClient
       .post('/api/v1/auth/sign-out', {})
-      .then(response => response.data)
+      .then(response => {
+        setAuthToken(null);
+        return response.data;
+      })
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),

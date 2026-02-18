@@ -6,6 +6,7 @@ export type ApiErrorPayload = {
 };
 
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const AUTH_TOKEN_STORAGE_KEY = 'clawpilot.auth.token';
 
 export const apiClient = axios.create({
   baseURL: apiBase,
@@ -14,6 +15,34 @@ export const apiClient = axios.create({
   },
   withCredentials: true,
 });
+
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+    }
+    return;
+  }
+
+  delete apiClient.defaults.headers.common.Authorization;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+};
+
+export const loadAuthToken = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  if (token) {
+    apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+  }
+};
+
+loadAuthToken();
 
 export const getApiErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {

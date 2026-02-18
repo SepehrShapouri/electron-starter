@@ -349,7 +349,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(app.getAppPath(), 'src', 'assets', 'clawpilot-v1.icns'),
+    icon: path.join(app.getAppPath(), 'src', 'assets', 'Icon.icns'),
     frame: isMac,
     backgroundColor: '#1a1a1a',
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
