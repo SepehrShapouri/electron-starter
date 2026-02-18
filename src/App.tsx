@@ -13,6 +13,7 @@ const queryClient = new QueryClient();
 
 type DeepLinkRoute =
   | '/app'
+  | '/onboarding'
   | '/auth/welcome'
   | '/auth/login'
   | '/auth/login-magic-link'
@@ -21,6 +22,7 @@ type DeepLinkRoute =
 const getSafeDeepLinkPath = (value: string | null, fallback: DeepLinkRoute) => {
   if (
     value === '/app' ||
+    value === '/onboarding' ||
     value === '/auth/welcome' ||
     value === '/auth/login' ||
     value === '/auth/login-magic-link' ||
@@ -40,6 +42,23 @@ const parseAuthDeepLink = (url: string) => {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'clawpilot:') {
+      return null;
+    }
+
+    if (parsed.hostname === 'onboarding') {
+      const checkoutParam = parsed.searchParams.get('checkout');
+      const checkout: 'success' | 'cancel' | undefined =
+        checkoutParam === 'success' || checkoutParam === 'cancel'
+          ? checkoutParam
+          : undefined;
+      return {
+        type: 'onboarding' as const,
+        checkout,
+        data: parsed.searchParams.get('data') ?? undefined,
+      };
+    }
+
+    if (parsed.hostname !== 'auth') {
       return null;
     }
 
@@ -91,6 +110,17 @@ function App() {
 
       const deepLink = parseAuthDeepLink(url);
       if (!deepLink || deepLink.type === 'unknown') {
+        return;
+      }
+
+      if (deepLink.type === 'onboarding') {
+        router.navigate({
+          to: '/onboarding',
+          search: {
+            ...(deepLink.checkout ? { checkout: deepLink.checkout } : {}),
+            ...(deepLink.data ? { data: deepLink.data } : {}),
+          },
+        });
         return;
       }
 

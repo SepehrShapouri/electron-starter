@@ -17,7 +17,18 @@ export const Route = createFileRoute('/app')({
       throw redirect({ to: '/auth/welcome' });
     }
 
-    return { session };
+    const onboarding = await queryClient
+      .fetchQuery({
+        queryKey: ['onboarding'],
+        queryFn: authApi.getOnboarding,
+      })
+      .catch(() => null);
+
+    if (!onboarding?.completed) {
+      throw redirect({ to: '/onboarding' });
+    }
+
+    return { session, onboarding };
   },
   component: AppLayout,
 });

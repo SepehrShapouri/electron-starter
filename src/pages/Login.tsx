@@ -51,7 +51,8 @@ export default function Login() {
     mutationFn: authApi.signIn,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/app' });
+      const onboarding = await authApi.getOnboarding().catch(() => null);
+      navigate({ to: onboarding?.completed ? '/app' : '/onboarding' });
     },
     onError: (err: unknown) => {
       setError('root', {
@@ -75,7 +76,7 @@ export default function Login() {
       const result = await authClient.signIn.social({
         provider: 'google',
         callbackURL: `${desktopAuthBridgeBase}/callback?next=/app`,
-        newUserCallbackURL: `${desktopAuthBridgeBase}/callback?next=/auth/welcome`,
+        newUserCallbackURL: `${desktopAuthBridgeBase}/callback?next=/onboarding`,
         errorCallbackURL: `${desktopAuthBridgeBase}/error?next=/auth/login`,
         disableRedirect: true,
       });

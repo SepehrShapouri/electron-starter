@@ -26,7 +26,8 @@ interface AppUpdateState {
 const UPDATE_STATE_EVENT = 'app-update:state-changed';
 const AUTH_DEEP_LINK_EVENT = 'auth:deep-link';
 const AUTH_PROTOCOL_SCHEME = 'clawpilot';
-const AUTH_CALLBACK_PREFIX = `${AUTH_PROTOCOL_SCHEME}://auth`;
+const AUTH_HOST = 'auth';
+const ONBOARDING_HOST = 'onboarding';
 const parseRepositoryCoordinates = (value: string) => {
   const trimmed = value.trim();
 
@@ -113,11 +114,21 @@ let autoUpdateInterval: NodeJS.Timeout | null = null;
 let mainWindow: BrowserWindow | null = null;
 let pendingAuthDeepLink: string | null = null;
 
-const isAuthDeepLink = (value: string) =>
-  value.startsWith(AUTH_CALLBACK_PREFIX);
+const isSupportedDeepLink = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== `${AUTH_PROTOCOL_SCHEME}:`) {
+      return false;
+    }
+
+    return parsed.hostname === AUTH_HOST || parsed.hostname === ONBOARDING_HOST;
+  } catch {
+    return false;
+  }
+};
 
 const getAuthDeepLinkFromArgv = (argv: string[]) =>
-  argv.find(arg => isAuthDeepLink(arg)) ?? null;
+  argv.find(arg => isSupportedDeepLink(arg)) ?? null;
 
 const focusMainWindow = () => {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -416,7 +427,7 @@ app.on('second-instance', (_event, argv) => {
 app.on('open-url', (event, url) => {
   event.preventDefault();
 
-  if (!isAuthDeepLink(url)) {
+  if (!isSupportedDeepLink(url)) {
     return;
   }
 
