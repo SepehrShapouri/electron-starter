@@ -1,12 +1,11 @@
-import { RouterProvider } from '@tanstack/react-router';
-import './index.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider } from '@tanstack/react-router';
 import { ThemeProvider } from './components/theme-provider.tsx';
+import './index.css';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from 'sileo';
 import { router } from './utils/routes';
-import { Toaster } from '@/components/ui/sonner';
-
 const queryClient = new QueryClient();
 
 function App() {
@@ -14,7 +13,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster
+            options={{ fill: 'black', styles: { description: 'text-white' } }}
+            position="top-center"
+          />
           <RouterProvider router={router} context={{ queryClient }} />
         </TooltipProvider>
       </ThemeProvider>
