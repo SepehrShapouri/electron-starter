@@ -461,6 +461,7 @@ ipcMain.handle('auth:get-pending-deep-link', () => {
 const createWindow = () => {
   // Create the browser window.
   const isMac = process.platform === 'darwin';
+  const isDev = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -487,6 +488,7 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: isDev,
     },
   });
 
@@ -522,7 +524,7 @@ const createWindow = () => {
   }
 
   // Open the DevTools in development
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+  if (isDev) {
     window.webContents.openDevTools();
   }
 };
