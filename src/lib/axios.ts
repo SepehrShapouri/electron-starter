@@ -5,7 +5,7 @@ export type ApiErrorPayload = {
   code?: string;
 };
 
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const apiBase = import.meta.env.VITE_API_URL ?? 'https://api.clawpilot.ai';
 const AUTH_TOKEN_STORAGE_KEY = 'clawpilot.auth.token';
 
 export const apiClient = axios.create({

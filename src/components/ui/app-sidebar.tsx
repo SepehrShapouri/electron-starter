@@ -16,8 +16,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useMatchRoute } from '@tanstack/react-router';
-import { ArrowDownToLine, Download, Loader2, Sparkles } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  Download,
+  Loader2,
+  RefreshCcwDot,
+  Sparkles,
+} from 'lucide-react';
 import * as React from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './card';
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute();
   const { updateState, checkForUpdates, installUpdate } = useAppUpdate();
@@ -127,33 +140,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarFooter className="gap-0">
         {hasUpdate && !isDismissed ? (
-          <div className="mx-3 mb-2 rounded-xl border border-primary-a4 bg-primary-a2 p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary-11" />
-                <span className="text-xs font-medium text-primary-12">
-                  New update
-                </span>
+          <Card className="gap-2 py-4 shadow-none">
+            <CardHeader className="px-4">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm">New update</CardTitle>
+                {availableVersion ? (
+                  <Badge
+                    variant="secondaryAccent"
+                    size="sm"
+                    className="rounded-xs"
+                  >
+                    v{availableVersion}
+                  </Badge>
+                ) : null}
               </div>
-              {availableVersion ? (
-                <Badge variant="secondaryPrimary" size="sm">
-                  v{availableVersion}
-                </Badge>
-              ) : null}
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              {updateState?.status === 'downloaded'
-                ? 'Ready to install. The app will restart once you confirm.'
-                : 'Downloading in the background. You can keep working.'}
-            </p>
-
-            <div className="mt-3 flex items-center gap-2">
+              <CardDescription>
+                A new version of Clawpilot is available!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 flex flex-col gap-4">
+              <p className="text-xs text-muted-foreground">
+                {updateState?.status === 'downloaded'
+                  ? 'Ready to install. The app will restart once you confirm.'
+                  : 'Downloading in the background. You can keep working.'}
+              </p>
               {updateState?.status === 'downloaded' ? (
                 <Button
                   size="sm"
-                  variant="primary"
-                  className="h-7 px-2.5"
                   onClick={handleInstallUpdate}
                   disabled={isInstallingUpdate}
                 >
@@ -168,28 +181,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-7 px-2.5"
                   onClick={() => {
                     void checkForUpdates();
                   }}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <RefreshCcwDot className="h-3.5 w-3.5" />
                   Check status
                 </Button>
               )}
-
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2"
-                onClick={() =>
-                  setDismissedVersion(availableVersion ?? 'unknown')
-                }
-              >
-                Later
-              </Button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ) : null}
 
         <SidebarMenuItem className="list-none">
