@@ -1,4 +1,4 @@
-import { app, autoUpdater, BrowserWindow, ipcMain } from 'electron';
+import { app, autoUpdater, BrowserWindow, ipcMain, shell } from 'electron';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
@@ -24,6 +24,9 @@ interface AppUpdateState {
 }
 
 const UPDATE_STATE_EVENT = 'app-update:state-changed';
+const AUTH_DEEP_LINK_EVENT = 'auth:deep-link';
+const AUTH_PROTOCOL_SCHEME = 'clawpilot';
+const AUTH_CALLBACK_PREFIX = `${AUTH_PROTOCOL_SCHEME}://auth`;
 const parseRepositoryCoordinates = (value: string) => {
   const trimmed = value.trim();
 
@@ -107,6 +110,47 @@ const baseUpdateState: AppUpdateState = {
 
 let appUpdateState: AppUpdateState = baseUpdateState;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
+let mainWindow: BrowserWindow | null = null;
+let pendingAuthDeepLink: string | null = null;
+
+const isAuthDeepLink = (value: string) =>
+  value.startsWith(AUTH_CALLBACK_PREFIX);
+
+const getAuthDeepLinkFromArgv = (argv: string[]) =>
+  argv.find(arg => isAuthDeepLink(arg)) ?? null;
+
+const focusMainWindow = () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.focus();
+};
+
+const emitAuthDeepLink = (url: string) => {
+  pendingAuthDeepLink = url;
+
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  mainWindow.webContents.send(AUTH_DEEP_LINK_EVENT, url);
+};
+
+const registerProtocolHandler = () => {
+  if (process.defaultApp) {
+    app.setAsDefaultProtocolClient(AUTH_PROTOCOL_SCHEME, process.execPath, [
+      path.resolve(process.argv[1] ?? ''),
+    ]);
+    return;
+  }
+
+  app.setAsDefaultProtocolClient(AUTH_PROTOCOL_SCHEME);
+};
 
 const isAutoUpdateEnabled = () =>
   app.isPackaged && supportsUpdatesOnPlatform && hasUpdateRepository;
@@ -354,6 +398,32 @@ if (started) {
   app.quit();
 }
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+}
+
+app.on('second-instance', (_event, argv) => {
+  const deepLink = getAuthDeepLinkFromArgv(argv);
+  if (deepLink) {
+    emitAuthDeepLink(deepLink);
+  }
+
+  focusMainWindow();
+});
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+
+  if (!isAuthDeepLink(url)) {
+    return;
+  }
+
+  emitAuthDeepLink(url);
+  focusMainWindow();
+});
+
 ipcMain.handle('is-fullscreen', () => {
   return BrowserWindow.getFocusedWindow()?.isFullScreen() ?? false;
 });
@@ -378,10 +448,20 @@ ipcMain.handle('app-update:install', () => {
   return true;
 });
 
+ipcMain.handle('auth:open-external-url', async (_event, url: string) => {
+  await shell.openExternal(url);
+});
+
+ipcMain.handle('auth:get-pending-deep-link', () => {
+  const url = pendingAuthDeepLink;
+  pendingAuthDeepLink = null;
+  return url;
+});
+
 const createWindow = () => {
   // Create the browser window.
   const isMac = process.platform === 'darwin';
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     icon: path.join(app.getAppPath(), 'src', 'assets', 'Icon.icns'),
@@ -410,30 +490,40 @@ const createWindow = () => {
     },
   });
 
-  mainWindow.on('enter-full-screen', () => {
-    mainWindow.webContents.send('fullscreen-changed', true);
+  const window = mainWindow;
+
+  window.on('enter-full-screen', () => {
+    window.webContents.send('fullscreen-changed', true);
   });
 
-  mainWindow.on('leave-full-screen', () => {
-    mainWindow.webContents.send('fullscreen-changed', false);
+  window.on('leave-full-screen', () => {
+    window.webContents.send('fullscreen-changed', false);
   });
 
-  mainWindow.webContents.on('did-finish-load', () => {
-    sendUpdateState(mainWindow);
+  window.webContents.on('did-finish-load', () => {
+    sendUpdateState(window);
+
+    if (pendingAuthDeepLink) {
+      window.webContents.send(AUTH_DEEP_LINK_EVENT, pendingAuthDeepLink);
+    }
+  });
+
+  window.on('closed', () => {
+    mainWindow = null;
   });
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(
+    window.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
     );
   }
 
   // Open the DevTools in development
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.webContents.openDevTools();
+    window.webContents.openDevTools();
   }
 };
 
@@ -441,6 +531,13 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
+  registerProtocolHandler();
+
+  const bootDeepLink = getAuthDeepLinkFromArgv(process.argv);
+  if (bootDeepLink) {
+    pendingAuthDeepLink = bootDeepLink;
+  }
+
   createWindow();
   initializeAutoUpdates();
 });

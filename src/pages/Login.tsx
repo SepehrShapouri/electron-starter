@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import gsap from 'gsap';
 import { authApi } from '@/lib/auth-api';
+import { authClient } from '@/lib/auth-client';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -23,9 +24,13 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'https://api.clawpilot.ai';
+const desktopAuthBridgeBase = `${apiBaseUrl}/api/v1/auth/electron`;
+
 export default function Login() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -59,6 +64,55 @@ export default function Login() {
     signInMutation.mutate(values);
   };
 
+  const handleGoogleSignIn = async () => {
+    if (googleLoading) {
+      return;
+    }
+
+    setGoogleLoading(true);
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: `${desktopAuthBridgeBase}/callback?next=/app`,
+        newUserCallbackURL: `${desktopAuthBridgeBase}/callback?next=/auth/welcome`,
+        errorCallbackURL: `${desktopAuthBridgeBase}/error?next=/auth/login`,
+        disableRedirect: true,
+      });
+
+      if (result.error) {
+        setError('root', {
+          message: result.error.message || 'Unable to sign in with Google.',
+        });
+        return;
+      }
+
+      const redirectUrl = (result.data as { url?: string } | null)?.url;
+      if (!redirectUrl) {
+        setError('root', {
+          message: 'Unable to start Google sign-in.',
+        });
+        return;
+      }
+
+      if (window.electronAPI) {
+        await window.electronAPI.openExternalUrl(redirectUrl);
+        return;
+      }
+
+      window.location.href = redirectUrl;
+    } catch (error) {
+      setError('root', {
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to sign in with Google.',
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   useEffect(() => {
     const tween = gsap.fromTo(
       containerRef.current,
@@ -71,7 +125,9 @@ export default function Login() {
     };
   }, []);
 
-  const navigateWithExit = (to: '/auth/welcome' | '/auth/signup') => {
+  const navigateWithExit = (
+    to: '/auth/welcome' | '/auth/signup' | '/auth/login-magic-link',
+  ) => {
     gsap
       .timeline({
         onComplete: () => {
@@ -186,12 +242,29 @@ export default function Login() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button type="button" variant="outline" size="xl" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="xl"
+          className="w-full"
+          onClick={() => {
+            void handleGoogleSignIn();
+          }}
+          disabled={googleLoading}
+        >
           <Google />
-          Continue with Google
+          {googleLoading ? 'Connecting to Google...' : 'Continue with Google'}
         </Button>
 
-        <Button type="button" variant="outline" size="xl" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="xl"
+          className="w-full"
+          onClick={() => {
+            navigateWithExit('/auth/login-magic-link');
+          }}
+        >
           <IconMagicWand2 />
           Get a Magic Link
         </Button>

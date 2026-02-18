@@ -93,6 +93,12 @@ const config: ForgeConfig = {
     asar: true,
     executableName: 'clawpilot',
     icon: 'src/assets/Icon',
+    protocols: [
+      {
+        name: 'Clawpilot Protocol',
+        schemes: ['clawpilot'],
+      },
+    ],
     osxSign: process.platform === 'darwin' ? true : undefined,
     osxNotarize:
       process.platform === 'darwin' && hasNotarizeConfig

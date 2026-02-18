@@ -1,7 +1,22 @@
 import { apiClient, getApiErrorMessage, setAuthToken } from './axios';
+import { authClient } from './auth-client';
 
 type AuthResult = {
   token?: string | null;
+};
+
+type AuthClientError = {
+  message?: string;
+  statusText?: string;
+};
+
+type AuthClientResponse<T> = {
+  data: T;
+  error: AuthClientError | null;
+};
+
+const getAuthClientErrorMessage = (error: AuthClientError | null) => {
+  return error?.message ?? error?.statusText ?? 'Request failed';
 };
 
 export type GatewayProvision = {
@@ -27,40 +42,61 @@ export const authApi = {
     }
   },
   signIn: (payload: { email: string; password: string }) =>
-    apiClient
-      .post('/api/v1/auth/sign-in/email', payload)
-      .then(response => {
-        const data = response.data as AuthResult;
+    authClient.signIn
+      .email(payload)
+      .then(result => {
+        const response = result as AuthClientResponse<AuthResult>;
+        if (response.error) {
+          throw new Error(getAuthClientErrorMessage(response.error));
+        }
+
+        const data = response.data;
         if (typeof data.token === 'string' && data.token.length > 0) {
           setAuthToken(data.token);
         }
-        return response.data;
+        return data;
       })
       .catch(error => {
-        throw new Error(getApiErrorMessage(error));
+        throw new Error(
+          error instanceof Error ? error.message : getApiErrorMessage(error)
+        );
       }),
   signUp: (payload: { name: string; email: string; password: string }) =>
-    apiClient
-      .post('/api/v1/auth/sign-up/email', payload)
-      .then(response => {
-        const data = response.data as AuthResult;
+    authClient.signUp
+      .email(payload)
+      .then(result => {
+        const response = result as AuthClientResponse<AuthResult>;
+        if (response.error) {
+          throw new Error(getAuthClientErrorMessage(response.error));
+        }
+
+        const data = response.data;
         if (typeof data.token === 'string' && data.token.length > 0) {
           setAuthToken(data.token);
         }
-        return response.data;
+        return data;
       })
       .catch(error => {
-        throw new Error(getApiErrorMessage(error));
+        throw new Error(
+          error instanceof Error ? error.message : getApiErrorMessage(error)
+        );
       }),
   signOut: () =>
-    apiClient
-      .post('/api/v1/auth/sign-out', {})
-      .then(response => {
+    authClient
+      .signOut()
+      .then(result => {
+        const response = result as AuthClientResponse<unknown>;
+        if (response.error) {
+          throw new Error(getAuthClientErrorMessage(response.error));
+        }
+
         setAuthToken(null);
         return response.data;
       })
       .catch(error => {
-        throw new Error(getApiErrorMessage(error));
+        throw new Error(
+          error instanceof Error ? error.message : getApiErrorMessage(error)
+        );
       }),
   provisionGateway: () =>
     apiClient
