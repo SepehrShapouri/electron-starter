@@ -106,7 +106,9 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({}),
-    new MakerDMG({}),
+    new MakerDMG({
+      icon: path.resolve(__dirname, 'src/assets/Icon.icns'),
+    }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
