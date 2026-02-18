@@ -25,6 +25,30 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 interface ElectronAPI {
   isFullscreen: () => Promise<boolean>;
   onFullscreenChange: (callback: (fullscreen: boolean) => void) => () => void;
+  getAppUpdateState: () => Promise<AppUpdateState>;
+  checkForAppUpdates: () => Promise<AppUpdateState>;
+  installAppUpdate: () => Promise<boolean>;
+  onAppUpdateStateChange: (
+    callback: (value: AppUpdateState) => void
+  ) => () => void;
+}
+
+interface AppUpdateState {
+  status:
+    | 'idle'
+    | 'unsupported'
+    | 'disabled'
+    | 'checking'
+    | 'available'
+    | 'unavailable'
+    | 'downloaded'
+    | 'error';
+  supported: boolean;
+  currentVersion: string;
+  availableVersion: string | null;
+  releaseNotes: string | null;
+  checkedAt: number | null;
+  message: string | null;
 }
 
 interface Window {

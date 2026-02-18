@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 test('has title', async ({ page }) => {
-    await page.goto('/');
+  await page.goto('/');
 
-    // Expect a title "to contain" a substring.
-    await expect(page).toHaveTitle(/Electron/);
+  // Expect a title "to contain" a substring.
+  await expect(page).toHaveTitle(/clawpilot/i);
 });
 
 test('navigation works', async ({ page }) => {
-    await page.goto('/');
+  await page.goto('/');
 
-    // Click the About link
-    await page.click('text=About');
+  // Click the About link
+  await page.click('text=About');
 
-    // Expects the URL to contain about
-    await expect(page).toHaveURL(/.*about/);
+  // Expects the URL to contain about
+  await expect(page).toHaveURL(/.*about/);
 });

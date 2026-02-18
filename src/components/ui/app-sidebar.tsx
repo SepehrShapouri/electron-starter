@@ -2,6 +2,7 @@ import IconBlocks from '@/components/icons/IconBlocks.svg';
 import IconBubble4 from '@/components/icons/IconBubble4.svg';
 import IconCalendarClock from '@/components/icons/IconCalendarClock.svg';
 import IconIntegrations from '@/components/icons/IconIntegrations.svg';
+import { useAppUpdate } from '@/hooks/use-app-update';
 import {
   Sidebar,
   SidebarContent,
@@ -12,10 +13,40 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Link, useMatchRoute } from '@tanstack/react-router';
+import { ArrowDownToLine, Download, Loader2, Sparkles } from 'lucide-react';
 import * as React from 'react';
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute();
+  const { updateState, checkForUpdates, installUpdate } = useAppUpdate();
+  const [isInstallingUpdate, setIsInstallingUpdate] = React.useState(false);
+  const [dismissedVersion, setDismissedVersion] = React.useState<string | null>(
+    null
+  );
+
+  const availableVersion = updateState?.availableVersion ?? null;
+  const hasUpdate =
+    updateState?.status === 'available' || updateState?.status === 'downloaded';
+
+  const isDismissed = Boolean(
+    dismissedVersion &&
+    availableVersion &&
+    dismissedVersion === availableVersion
+  );
+
+  React.useEffect(() => {
+    if (!availableVersion) {
+      setDismissedVersion(null);
+    }
+  }, [availableVersion]);
+
+  const handleInstallUpdate = async () => {
+    setIsInstallingUpdate(true);
+    await installUpdate();
+    setIsInstallingUpdate(false);
+  };
 
   const isJarvisActive = Boolean(matchRoute({ to: '/app', fuzzy: false }));
   const isIntegrationsActive = Boolean(
@@ -95,6 +126,72 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter className="gap-0">
+        {hasUpdate && !isDismissed ? (
+          <div className="mx-3 mb-2 rounded-xl border border-primary-a4 bg-primary-a2 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary-11" />
+                <span className="text-xs font-medium text-primary-12">
+                  New update
+                </span>
+              </div>
+              {availableVersion ? (
+                <Badge variant="secondaryPrimary" size="sm">
+                  v{availableVersion}
+                </Badge>
+              ) : null}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {updateState?.status === 'downloaded'
+                ? 'Ready to install. The app will restart once you confirm.'
+                : 'Downloading in the background. You can keep working.'}
+            </p>
+
+            <div className="mt-3 flex items-center gap-2">
+              {updateState?.status === 'downloaded' ? (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="h-7 px-2.5"
+                  onClick={handleInstallUpdate}
+                  disabled={isInstallingUpdate}
+                >
+                  {isInstallingUpdate ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ArrowDownToLine className="h-3.5 w-3.5" />
+                  )}
+                  {isInstallingUpdate ? 'Installing...' : 'Install now'}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 px-2.5"
+                  onClick={() => {
+                    void checkForUpdates();
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Check status
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                onClick={() =>
+                  setDismissedVersion(availableVersion ?? 'unknown')
+                }
+              >
+                Later
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <SidebarMenuItem className="list-none">
           <SidebarMenuButton>
             <a href={`mailto:support@clawpilot.ai`}>

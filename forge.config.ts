@@ -3,14 +3,86 @@ import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+const parseRepositoryCoordinates = (value: string) => {
+  const trimmed = value.trim();
+
+  const directMatch = trimmed.match(/^([^/\s]+)\/([^/\s]+)$/);
+  if (directMatch) {
+    return {
+      owner: directMatch[1],
+      name: directMatch[2],
+    };
+  }
+
+  const githubMatch = trimmed.match(
+    /github\.com[/:]([^/\s]+)\/([^/\s]+?)(?:\.git)?$/i
+  );
+  if (githubMatch) {
+    return {
+      owner: githubMatch[1],
+      name: githubMatch[2],
+    };
+  }
+
+  return null;
+};
+
+const readRepositoryFromPackageManifest = () => {
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJsonRaw = readFileSync(packageJsonPath, 'utf8');
+    const packageJson = JSON.parse(packageJsonRaw) as {
+      clawpilot?: { updateRepository?: string };
+      repository?: string | { url?: string };
+    };
+
+    if (
+      packageJson.clawpilot &&
+      typeof packageJson.clawpilot === 'object' &&
+      typeof packageJson.clawpilot.updateRepository === 'string'
+    ) {
+      return parseRepositoryCoordinates(packageJson.clawpilot.updateRepository);
+    }
+
+    if (typeof packageJson.repository === 'string') {
+      return parseRepositoryCoordinates(packageJson.repository);
+    }
+
+    if (
+      packageJson.repository &&
+      typeof packageJson.repository === 'object' &&
+      typeof packageJson.repository.url === 'string'
+    ) {
+      return parseRepositoryCoordinates(packageJson.repository.url);
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const updateRepositoryFromEnv =
+  process.env.UPDATE_REPOSITORY ?? process.env.GITHUB_REPOSITORY ?? '';
+const updateRepository =
+  parseRepositoryCoordinates(updateRepositoryFromEnv) ??
+  readRepositoryFromPackageManifest();
+const updateRepositoryOwner = updateRepository?.owner ?? '';
+const updateRepositoryName = updateRepository?.name ?? '';
+const hasGitHubPublisherConfig =
+  Boolean(updateRepositoryOwner) && Boolean(updateRepositoryName);
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'electron-shadcn',
+    executableName: 'clawpilot',
     icon: 'src/assets/clawpilot-v1',
   },
   rebuildConfig: {},
@@ -20,6 +92,18 @@ const config: ForgeConfig = {
     new MakerRpm({}),
     new MakerDeb({}),
   ],
+  publishers: hasGitHubPublisherConfig
+    ? [
+        new PublisherGithub({
+          repository: {
+            owner: updateRepositoryOwner,
+            name: updateRepositoryName,
+          },
+          draft: false,
+          prerelease: false,
+        }),
+      ]
+    : [],
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
