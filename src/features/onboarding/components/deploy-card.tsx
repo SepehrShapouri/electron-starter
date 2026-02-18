@@ -19,8 +19,10 @@ type DeployCardProps = {
   keySource: 'credits' | 'byok';
   integration: string | null;
   isSubscribing: boolean;
+  isLaunching: boolean;
   isLoading: boolean;
   isSubscribed: boolean;
+  canLaunchAfterSubscribe?: boolean;
   onSubscribe: () => void;
 };
 
@@ -29,11 +31,13 @@ export function DeployCard({
   keySource,
   integration,
   isSubscribing,
+  isLaunching,
   isLoading,
   isSubscribed,
+  canLaunchAfterSubscribe = false,
   onSubscribe,
 }: DeployCardProps) {
-  const isBusy = isSubscribing || isLoading;
+  const isBusy = isSubscribing || isLaunching || isLoading;
   const providerLabel = PROVIDER_LABELS[provider] ?? provider;
   const keySourceLabel =
     keySource === 'byok' ? 'Own API key' : 'Clawpilot credits';
@@ -94,13 +98,17 @@ export function DeployCard({
 
         <Button
           className="h-11 w-full"
-          variant={isSubscribed ? 'secondary' : 'default'}
-          disabled={isSubscribed || isBusy}
+          variant={isSubscribed && !canLaunchAfterSubscribe ? 'secondary' : 'default'}
+          disabled={isSubscribed ? !canLaunchAfterSubscribe || isBusy : isBusy}
           size="lg"
           onClick={onSubscribe}
         >
-          {isSubscribed
-            ? 'Subscribed!'
+          {isLaunching
+            ? 'Launching...'
+            : isSubscribed && canLaunchAfterSubscribe
+              ? 'Launch agent'
+              : isSubscribed
+                ? 'Subscribed!'
             : isSubscribing
               ? 'Redirecting to checkout...'
               : isLoading
@@ -111,6 +119,12 @@ export function DeployCard({
         {!isSubscribed && (
           <p className="text-center text-xs text-muted-foreground">
             You&apos;ll get your credentials once provisioning completes.
+          </p>
+        )}
+
+        {isSubscribed && canLaunchAfterSubscribe && (
+          <p className="text-center text-xs text-muted-foreground">
+            Subscription is active. Finish by launching your agent.
           </p>
         )}
       </div>

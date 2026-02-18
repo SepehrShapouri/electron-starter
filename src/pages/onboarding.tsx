@@ -281,6 +281,27 @@ export default function OnboardingPage({
     }
 
     try {
+      if (isByok && !apiKey.trim()) {
+        setErrorMessage('API key is required');
+        return;
+      }
+
+      if (selectedIntegration === 'telegram' && !botToken.trim()) {
+        setErrorMessage('Bot token is required to continue');
+        return;
+      }
+
+      const existingPayload = encryptedData ?? getPendingPayload();
+
+      if (isSubscribed) {
+        const payload = existingPayload;
+        if (payload) {
+          provisioningStarted.current = false;
+          await runProvision(payload);
+          return;
+        }
+      }
+
       const response = await authApi.getOnboardingEncryptionKey();
       const encryptedPayload = await encryptPayload(response.key, {
         model: selectedModel,
@@ -289,6 +310,14 @@ export default function OnboardingPage({
         telegramBotKey:
           selectedIntegration === 'telegram' ? botToken.trim() : undefined,
       });
+
+      if (isSubscribed) {
+        setPendingPayload(encryptedPayload);
+        provisioningStarted.current = false;
+        await runProvision(encryptedPayload);
+        return;
+      }
+
       setPendingPayload(encryptedPayload);
       subscribeMutation.mutate({
         encryptedPayload,
@@ -480,8 +509,10 @@ export default function OnboardingPage({
                 selectedIntegration === 'openclaw' ? null : selectedIntegration
               }
               isSubscribing={subscribeMutation.isPending}
+              isLaunching={false}
               isLoading={billingQuery.isLoading}
               isSubscribed={isSubscribed}
+              canLaunchAfterSubscribe={isSubscribed}
               onSubscribe={handleSubscribe}
             />
           )}
