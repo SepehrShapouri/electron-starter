@@ -15,14 +15,8 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Link, useMatchRoute } from '@tanstack/react-router';
-import {
-  ArrowDownToLine,
-  Download,
-  Loader2,
-  RefreshCcwDot,
-  Sparkles,
-} from 'lucide-react';
+import { Link, useRouterState } from '@tanstack/react-router';
+import { ArrowDownToLine, Loader2, RefreshCcwDot } from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -32,7 +26,9 @@ import {
   CardTitle,
 } from './card';
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const matchRoute = useMatchRoute();
+  const pathname = useRouterState({
+    select: state => state.location.pathname,
+  });
   const { updateState, checkForUpdates, installUpdate } = useAppUpdate();
   const [isInstallingUpdate, setIsInstallingUpdate] = React.useState(false);
   const [dismissedVersion, setDismissedVersion] = React.useState<string | null>(
@@ -61,16 +57,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     setIsInstallingUpdate(false);
   };
 
-  const isJarvisActive = Boolean(matchRoute({ to: '/app', fuzzy: false }));
-  const isIntegrationsActive = Boolean(
-    matchRoute({ to: '/app/integrations', fuzzy: true })
-  );
-  const isSkillsActive = Boolean(
-    matchRoute({ to: '/app/skills', fuzzy: true })
-  );
-  const isScheduledActive = Boolean(
-    matchRoute({ to: '/app/scheduled', fuzzy: true })
-  );
+  const isJarvisActive = pathname === '/app';
+  const isIntegrationsActive = pathname.startsWith('/app/integrations');
+  const isSkillsActive = pathname.startsWith('/app/skills');
+  const isScheduledActive = pathname.startsWith('/app/scheduled');
 
   return (
     <Sidebar variant="sidebar" {...props} className="border-r-0!">
