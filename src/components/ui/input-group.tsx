@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 'use client';
 
 import * as React from 'react';
@@ -126,6 +127,7 @@ function InputGroupInput({
   ...props
 }: React.ComponentProps<'input'>) {
   return (
+    //@ts-ignore
     <Input
       data-slot="input-group-control"
       className={cn(

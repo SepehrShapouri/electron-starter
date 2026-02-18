@@ -1,5 +1,6 @@
 'use client';
 
+import IconArrowUp from '@/components/icons/IconArrowUp.svg';
 import {
   Command,
   CommandEmpty,
@@ -36,18 +37,17 @@ import {
 import { cn } from '@/lib/utils';
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from 'ai';
 import {
-  CornerDownLeftIcon,
   ImageIcon,
   Loader2Icon,
   PlusIcon,
   SquareIcon,
-  XIcon,
+  XIcon
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import {
-  Children,
   type ChangeEvent,
   type ChangeEventHandler,
+  Children,
   type ClipboardEventHandler,
   type ComponentProps,
   createContext,
@@ -64,7 +64,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import IconArrowUp from '@/components/icons/IconArrowUp.svg'
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string })[];
   add: (files: File[] | FileList) => void;

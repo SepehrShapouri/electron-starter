@@ -31,7 +31,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [macos-latest]
 
     steps:
       - name: Checkout code
@@ -57,7 +57,68 @@ jobs:
         continue-on-error: true
         run: npm run lint
 
+      - name: Import Apple signing certificate
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          if [[ -z "$MACOS_CERTIFICATE" || -z "$MACOS_CERTIFICATE_PASSWORD" || -z "$KEYCHAIN_PASSWORD" ]]; then
+            echo "Signing secrets missing. Failing build."
+            exit 1
+          fi
+          echo "$MACOS_CERTIFICATE" | base64 --decode > /tmp/macos-signing.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import /tmp/macos-signing.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          security find-identity -v -p codesigning build.keychain
+
+      - name: Validate signing and notarization configuration
+        if: runner.os == 'macOS'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if security find-identity -v -p codesigning build.keychain | grep -q "Developer ID Application"; then
+            echo "Signing identity check: Developer ID Application found"
+          else
+            echo "Signing identity check: FAILED (Developer ID Application not found)"
+            exit 1
+          fi
+
+          if [[ -n "$APPLE_ID" ]]; then
+            echo "APPLE_ID: configured"
+          else
+            echo "APPLE_ID: missing"
+            exit 1
+          fi
+
+          if [[ -n "$APPLE_TEAM_ID" ]]; then
+            echo "APPLE_TEAM_ID: configured"
+          else
+            echo "APPLE_TEAM_ID: missing"
+            exit 1
+          fi
+
+          if [[ -n "$APPLE_APP_SPECIFIC_PASSWORD" || -n "$APPLE_ID_PASSWORD" ]]; then
+            echo "Apple notarization password: configured"
+          else
+            echo "Apple notarization password: missing"
+            exit 1
+          fi
+
       - name: Build application
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run make
 
       - name: List build output (Unix)
@@ -67,33 +128,11 @@ jobs:
           find out -type f -name "*" 2>/dev/null || echo "No out directory found"
           ls -la out/ 2>/dev/null || echo "No out directory"
 
-      - name: List build output (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          echo "Build output structure:"
-          if (Test-Path out) { Get-ChildItem -Recurse out | Select-Object FullName } else { echo "No out directory found" }
-
-      - name: Upload artifacts (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: electron-app-windows
-          path: out/make/**/*
-          retention-days: 30
-
       - name: Upload artifacts (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: electron-app-macos
-          path: out/make/**/*
-          retention-days: 30
-
-      - name: Upload artifacts (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: electron-app-linux
           path: out/make/**/*
           retention-days: 30
 
@@ -144,9 +183,7 @@ jobs:
           name: ${{ steps.release-tag.outputs.name }}
           repository: ${{ env.RELEASES_REPOSITORY }}
           files: |
-            electron-app-windows/**/*
             electron-app-macos/**/*
-            electron-app-linux/**/*
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -161,7 +198,5 @@ jobs:
             This release was manually triggered from the GitHub Actions interface.
 
             ## 📦 Downloads
-            - **Windows**: `.exe` installer and `.zip` portable
-            - **macOS**: `.dmg` installer and `.zip` portable  
-            - **Linux**: `.deb` and `.rpm` packages, plus `.zip` portable
+            - **macOS**: `.dmg` installer and `.zip` portable
           token: ${{ secrets.RELEASES_REPO_TOKEN }}

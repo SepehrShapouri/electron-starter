@@ -78,12 +78,29 @@ const updateRepositoryOwner = updateRepository?.owner ?? '';
 const updateRepositoryName = updateRepository?.name ?? '';
 const hasGitHubPublisherConfig =
   Boolean(updateRepositoryOwner) && Boolean(updateRepositoryName);
+const appleId = process.env.APPLE_ID ?? '';
+const appleIdPassword =
+  process.env.APPLE_APP_SPECIFIC_PASSWORD ??
+  process.env.APPLE_ID_PASSWORD ??
+  '';
+const appleTeamId = process.env.APPLE_TEAM_ID ?? '';
+const hasNotarizeConfig =
+  appleId.length > 0 && appleIdPassword.length > 0 && appleTeamId.length > 0;
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'clawpilot',
     icon: 'src/assets/clawpilot-v1',
+    osxSign: process.platform === 'darwin' ? true : undefined,
+    osxNotarize:
+      process.platform === 'darwin' && hasNotarizeConfig
+        ? {
+            appleId,
+            appleIdPassword,
+            teamId: appleTeamId,
+          }
+        : undefined,
   },
   rebuildConfig: {},
   makers: [

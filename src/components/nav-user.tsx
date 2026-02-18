@@ -14,7 +14,6 @@ import { authApi } from '@/lib/auth-api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useRouteContext } from '@tanstack/react-router';
 import { ThemeToggle } from './theme-toggle';
-import { ThemeTogglerButton } from './animate-ui/components/buttons/theme-toggler';
 
 const getInitials = (value?: string | null) => {
   if (!value) {

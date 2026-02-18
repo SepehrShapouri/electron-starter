@@ -12,13 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AuthVerifyRouteImport } from './routes/auth/verify'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
-import { Route as AuthResetRouteImport } from './routes/auth/reset'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
-import { Route as AuthForgotRouteImport } from './routes/auth/forgot'
 import { Route as AppSkillsRouteImport } from './routes/app/skills'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppScheduledRouteImport } from './routes/app/scheduled'
 import { Route as AppIntegrationsRouteImport } from './routes/app/integrations'
 
@@ -37,19 +33,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AuthVerifyRoute = AuthVerifyRouteImport.update({
-  id: '/auth/verify',
-  path: '/auth/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/auth/signup',
   path: '/auth/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthResetRoute = AuthResetRouteImport.update({
-  id: '/auth/reset',
-  path: '/auth/reset',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -57,19 +43,9 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthForgotRoute = AuthForgotRouteImport.update({
-  id: '/auth/forgot',
-  path: '/auth/forgot',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppSkillsRoute = AppSkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppScheduledRoute = AppScheduledRouteImport.update({
@@ -88,26 +64,18 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
-  '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify': typeof AuthVerifyRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
-  '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify': typeof AuthVerifyRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -116,13 +84,9 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
-  '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
-  '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify': typeof AuthVerifyRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -132,26 +96,18 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/integrations'
     | '/app/scheduled'
-    | '/app/settings'
     | '/app/skills'
-    | '/auth/forgot'
     | '/auth/login'
-    | '/auth/reset'
     | '/auth/signup'
-    | '/auth/verify'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app/integrations'
     | '/app/scheduled'
-    | '/app/settings'
     | '/app/skills'
-    | '/auth/forgot'
     | '/auth/login'
-    | '/auth/reset'
     | '/auth/signup'
-    | '/auth/verify'
     | '/app'
   id:
     | '__root__'
@@ -159,24 +115,17 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/integrations'
     | '/app/scheduled'
-    | '/app/settings'
     | '/app/skills'
-    | '/auth/forgot'
     | '/auth/login'
-    | '/auth/reset'
     | '/auth/signup'
-    | '/auth/verify'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  AuthForgotRoute: typeof AuthForgotRoute
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthResetRoute: typeof AuthResetRoute
   AuthSignupRoute: typeof AuthSignupRoute
-  AuthVerifyRoute: typeof AuthVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,25 +151,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/auth/verify': {
-      id: '/auth/verify'
-      path: '/auth/verify'
-      fullPath: '/auth/verify'
-      preLoaderRoute: typeof AuthVerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/signup': {
       id: '/auth/signup'
       path: '/auth/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/reset': {
-      id: '/auth/reset'
-      path: '/auth/reset'
-      fullPath: '/auth/reset'
-      preLoaderRoute: typeof AuthResetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/login': {
@@ -230,25 +165,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/forgot': {
-      id: '/auth/forgot'
-      path: '/auth/forgot'
-      fullPath: '/auth/forgot'
-      preLoaderRoute: typeof AuthForgotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/app/skills': {
       id: '/app/skills'
       path: '/skills'
       fullPath: '/app/skills'
       preLoaderRoute: typeof AppSkillsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/scheduled': {
@@ -271,7 +192,6 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppScheduledRoute: typeof AppScheduledRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppSkillsRoute: typeof AppSkillsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -279,7 +199,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppIntegrationsRoute: AppIntegrationsRoute,
   AppScheduledRoute: AppScheduledRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppSkillsRoute: AppSkillsRoute,
   AppIndexRoute: AppIndexRoute,
 }
@@ -289,11 +208,8 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  AuthForgotRoute: AuthForgotRoute,
   AuthLoginRoute: AuthLoginRoute,
-  AuthResetRoute: AuthResetRoute,
   AuthSignupRoute: AuthSignupRoute,
-  AuthVerifyRoute: AuthVerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
