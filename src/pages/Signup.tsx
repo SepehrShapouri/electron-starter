@@ -2,7 +2,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Clawpilot from '@/components/icons/Clawpilot.svg';
-import IconMagicWand2 from '@/components/icons/IconMagicWand2.svg';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -180,9 +179,7 @@ export default function Signup() {
     };
   }, [step]);
 
-  const navigateWithExit = (
-    to: '/auth/welcome' | '/auth/login' | '/auth/signup-magic-link',
-  ) => {
+  const navigateWithExit = (to: '/auth/welcome' | '/auth/login') => {
     gsap
       .timeline({
         onComplete: () => {
@@ -415,19 +412,6 @@ export default function Signup() {
               {signUpMutation.isPending
                 ? 'Creating account...'
                 : 'Create account'}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="xl"
-              className="mt-3 w-full"
-              onClick={() => {
-                navigateWithExit('/auth/signup-magic-link');
-              }}
-            >
-              <IconMagicWand2 />
-              Get a Magic Link
             </Button>
           </form>
 
