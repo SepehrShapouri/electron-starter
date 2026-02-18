@@ -8,7 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import type { CronJob, CronRunLogEntry } from '@/lib/cron-types';
@@ -21,7 +27,7 @@ import {
   updateGatewayCronEnabled,
   summarizeCronPayload,
 } from '@/lib/gateway-cron';
-import { LOCAL_GATEWAY_CONFIG } from '@/lib/local-gateway-config';
+import { useGatewayProvision } from '@/lib/use-gateway-provision';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -30,52 +36,55 @@ const RUN_LIMIT = 50;
 
 export default function ScheduledPage() {
   const queryClient = useQueryClient();
-  const gatewayConfig = LOCAL_GATEWAY_CONFIG;
+  const { provisionQuery, gatewayConfig } = useGatewayProvision();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const jobsQuery = useQuery({
-    queryKey: ['cron-jobs', gatewayConfig.gatewayUrl],
-    queryFn: () => listGatewayCrons(gatewayConfig),
+    queryKey: ['cron-jobs', gatewayConfig?.gatewayUrl],
+    queryFn: () => listGatewayCrons(gatewayConfig!),
+    enabled: Boolean(gatewayConfig),
   });
 
   const statusQuery = useQuery({
-    queryKey: ['cron-status', gatewayConfig.gatewayUrl],
-    queryFn: () => getGatewayCronStatus(gatewayConfig),
+    queryKey: ['cron-status', gatewayConfig?.gatewayUrl],
+    queryFn: () => getGatewayCronStatus(gatewayConfig!),
+    enabled: Boolean(gatewayConfig),
     retry: false,
   });
 
   const toggleMutation = useMutation({
     mutationFn: (params: { id: string; enabled: boolean }) =>
-      updateGatewayCronEnabled(gatewayConfig, params),
+      updateGatewayCronEnabled(gatewayConfig!, params),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['cron-jobs', gatewayConfig.gatewayUrl],
+        queryKey: ['cron-jobs', gatewayConfig?.gatewayUrl],
       });
       await queryClient.invalidateQueries({
-        queryKey: ['cron-status', gatewayConfig.gatewayUrl],
+        queryKey: ['cron-status', gatewayConfig?.gatewayUrl],
       });
       await queryClient.invalidateQueries({
-        queryKey: ['cron-runs', gatewayConfig.gatewayUrl],
+        queryKey: ['cron-runs', gatewayConfig?.gatewayUrl],
       });
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: (params: { id: string }) => removeGatewayCron(gatewayConfig, params),
+    mutationFn: (params: { id: string }) =>
+      removeGatewayCron(gatewayConfig!, params),
     onSuccess: async (_data, variables) => {
       if (variables.id === selectedJobId) {
         setHistoryOpen(false);
         setSelectedJobId(null);
       }
       await queryClient.invalidateQueries({
-        queryKey: ['cron-jobs', gatewayConfig.gatewayUrl],
+        queryKey: ['cron-jobs', gatewayConfig?.gatewayUrl],
       });
       await queryClient.invalidateQueries({
-        queryKey: ['cron-status', gatewayConfig.gatewayUrl],
+        queryKey: ['cron-status', gatewayConfig?.gatewayUrl],
       });
       await queryClient.removeQueries({
-        queryKey: ['cron-runs', gatewayConfig.gatewayUrl, variables.id],
+        queryKey: ['cron-runs', gatewayConfig?.gatewayUrl, variables.id],
       });
     },
   });
@@ -105,6 +114,30 @@ export default function ScheduledPage() {
     }
   };
 
+  if (!gatewayConfig && provisionQuery.isLoading) {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
+        <LoadingState />
+      </div>
+    );
+  }
+
+  if (!gatewayConfig && provisionQuery.isError) {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
+        <ErrorState
+          message={
+            provisionQuery.error instanceof Error
+              ? provisionQuery.error.message
+              : 'Unable to load gateway access.'
+          }
+          onRetry={() => provisionQuery.refetch()}
+          isRetrying={provisionQuery.isFetching}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
       <header className="mb-6">
@@ -114,12 +147,19 @@ export default function ScheduledPage() {
 
       {statusQuery.data ? (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant={statusQuery.data.enabled ? 'secondarySuccess' : 'secondary'} size="sm">
+          <Badge
+            variant={
+              statusQuery.data.enabled ? 'secondarySuccess' : 'secondary'
+            }
+            size="sm"
+          >
             Scheduler {statusQuery.data.enabled ? 'on' : 'off'}
           </Badge>
           <span>{statusQuery.data.jobs} jobs</span>
           {typeof statusQuery.data.nextWakeAtMs === 'number' ? (
-            <span>Next wake: {formatTimestamp(statusQuery.data.nextWakeAtMs)}</span>
+            <span>
+              Next wake: {formatTimestamp(statusQuery.data.nextWakeAtMs)}
+            </span>
           ) : null}
         </div>
       ) : null}
@@ -145,10 +185,18 @@ export default function ScheduledPage() {
               key={job.id}
               job={job}
               onOpenHistory={() => openHistory(job.id)}
-              onToggle={enabled => toggleMutation.mutate({ id: job.id, enabled })}
+              onToggle={enabled =>
+                toggleMutation.mutate({ id: job.id, enabled })
+              }
               onRemove={() => removeMutation.mutate({ id: job.id })}
-              togglePending={toggleMutation.isPending && toggleMutation.variables?.id === job.id}
-              removePending={removeMutation.isPending && removeMutation.variables?.id === job.id}
+              togglePending={
+                toggleMutation.isPending &&
+                toggleMutation.variables?.id === job.id
+              }
+              removePending={
+                removeMutation.isPending &&
+                removeMutation.variables?.id === job.id
+              }
             />
           ))}
         </section>
@@ -179,7 +227,7 @@ export default function ScheduledPage() {
       ) : null}
 
       <RunsHistorySheet
-        gatewayUrl={gatewayConfig.gatewayUrl}
+        gatewayConfig={gatewayConfig}
         open={historyOpen}
         onOpenChange={handleHistoryOpenChange}
         job={selectedJob}
@@ -203,12 +251,14 @@ function ScheduledTaskCard({
   togglePending: boolean;
   removePending: boolean;
 }) {
-  const nextRun = typeof job.state?.nextRunAtMs === 'number'
-    ? formatTimestamp(job.state.nextRunAtMs)
-    : 'Not scheduled';
-  const lastRun = typeof job.state?.lastRunAtMs === 'number'
-    ? formatTimestamp(job.state.lastRunAtMs)
-    : 'No runs yet';
+  const nextRun =
+    typeof job.state?.nextRunAtMs === 'number'
+      ? formatTimestamp(job.state.nextRunAtMs)
+      : 'Not scheduled';
+  const lastRun =
+    typeof job.state?.lastRunAtMs === 'number'
+      ? formatTimestamp(job.state.lastRunAtMs)
+      : 'No runs yet';
 
   const handleRemove = () => {
     const confirmed = window.confirm(`Remove "${job.name}"?`);
@@ -223,15 +273,25 @@ function ScheduledTaskCard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <CardTitle className="text-base leading-6">{job.name}</CardTitle>
-            <CardDescription className="mt-1">{describeCronSchedule(job.schedule)}</CardDescription>
+            <CardDescription className="mt-1">
+              {describeCronSchedule(job.schedule)}
+            </CardDescription>
           </div>
 
           <div className="flex items-center gap-3">
-            <Button type="button" size="sm" variant="secondary" onClick={onOpenHistory}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onOpenHistory}
+            >
               History
             </Button>
             <div className="flex items-center gap-2">
-              <label htmlFor={`task-enabled-${job.id}`} className="text-sm text-muted-foreground">
+              <label
+                htmlFor={`task-enabled-${job.id}`}
+                className="text-sm text-muted-foreground"
+              >
                 Enabled
               </label>
               <Switch
@@ -288,35 +348,43 @@ function ScheduledTaskCard({
 }
 
 function RunsHistorySheet({
-  gatewayUrl,
+  gatewayConfig,
   open,
   onOpenChange,
   job,
 }: {
-  gatewayUrl: string;
+  gatewayConfig: { gatewayUrl: string; token?: string } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   job: CronJob | null;
 }) {
   const runsQuery = useQuery({
-    queryKey: ['cron-runs', gatewayUrl, job?.id],
-    queryFn: () => listGatewayCronRuns(LOCAL_GATEWAY_CONFIG, { id: job?.id ?? '', limit: RUN_LIMIT }),
-    enabled: open && Boolean(job?.id),
+    queryKey: ['cron-runs', gatewayConfig?.gatewayUrl, job?.id],
+    queryFn: () =>
+      listGatewayCronRuns(gatewayConfig!, {
+        id: job?.id ?? '',
+        limit: RUN_LIMIT,
+      }),
+    enabled: open && Boolean(job?.id) && Boolean(gatewayConfig),
   });
 
-  const nextRun = typeof job?.state?.nextRunAtMs === 'number'
-    ? formatTimestamp(job.state.nextRunAtMs)
-    : 'Not scheduled';
-  const lastRun = typeof job?.state?.lastRunAtMs === 'number'
-    ? formatTimestamp(job.state.lastRunAtMs)
-    : 'No runs yet';
+  const nextRun =
+    typeof job?.state?.nextRunAtMs === 'number'
+      ? formatTimestamp(job.state.nextRunAtMs)
+      : 'Not scheduled';
+  const lastRun =
+    typeof job?.state?.lastRunAtMs === 'number'
+      ? formatTimestamp(job.state.lastRunAtMs)
+      : 'No runs yet';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="pb-0">
           <SheetTitle>Run History</SheetTitle>
-          <SheetDescription>{job ? `Recent runs for ${job.name}` : 'No task selected.'}</SheetDescription>
+          <SheetDescription>
+            {job ? `Recent runs for ${job.name}` : 'No task selected.'}
+          </SheetDescription>
         </SheetHeader>
 
         {job ? (
@@ -338,7 +406,10 @@ function RunsHistorySheet({
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-muted-foreground">Enabled</dt>
                   <dd>
-                    <Badge variant={job.enabled ? 'secondarySuccess' : 'secondary'} size="sm">
+                    <Badge
+                      variant={job.enabled ? 'secondarySuccess' : 'secondary'}
+                      size="sm"
+                    >
                       {job.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </dd>
@@ -356,7 +427,9 @@ function RunsHistorySheet({
           </div>
         ) : (
           <div className="px-4 pb-4">
-            <p className="text-sm text-muted-foreground">Select a task to view run history.</p>
+            <p className="text-sm text-muted-foreground">
+              Select a task to view run history.
+            </p>
           </div>
         )}
       </SheetContent>
@@ -398,19 +471,28 @@ function RunsPanel({
   return (
     <div className="space-y-2" aria-label="Run history list">
       {entries.slice(0, RUN_LIMIT).map(entry => (
-        <div key={`${entry.jobId}-${entry.ts}-${entry.status}`} className="rounded-md border p-3">
+        <div
+          key={`${entry.jobId}-${entry.ts}-${entry.status}`}
+          className="rounded-md border p-3"
+        >
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <Badge size="sm" variant={statusVariant(entry.status)}>
               {entry.status}
             </Badge>
-            <span className="text-sm text-muted-foreground">{formatTimestamp(entry.ts)}</span>
             <span className="text-sm text-muted-foreground">
-              {typeof entry.durationMs === 'number' ? `${entry.durationMs} ms` : 'Duration n/a'}
+              {formatTimestamp(entry.ts)}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {typeof entry.durationMs === 'number'
+                ? `${entry.durationMs} ms`
+                : 'Duration n/a'}
             </span>
           </div>
           {entry.summary ? <p className="text-sm">{entry.summary}</p> : null}
           {entry.error ? (
-            <p className="mt-1 text-sm text-destructive">{truncate(entry.error, 200)}</p>
+            <p className="mt-1 text-sm text-destructive">
+              {truncate(entry.error, 200)}
+            </p>
           ) : null}
         </div>
       ))}
@@ -462,11 +544,18 @@ function ErrorState({
   return (
     <Card className="gap-4 py-6">
       <CardHeader className="px-6">
-        <CardTitle className="text-base">Could not load scheduled tasks</CardTitle>
+        <CardTitle className="text-base">
+          Could not load scheduled tasks
+        </CardTitle>
         <CardDescription>{message}</CardDescription>
       </CardHeader>
       <CardContent className="px-6">
-        <Button type="button" variant="outline" onClick={onRetry} disabled={isRetrying}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRetry}
+          disabled={isRetrying}
+        >
           {isRetrying ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />

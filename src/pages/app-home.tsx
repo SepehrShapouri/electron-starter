@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   Loader2,
@@ -27,21 +26,23 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
-import { authApi } from '../lib/auth-api';
-import { LOCAL_GATEWAY_CHAT_CONFIG } from '../lib/local-gateway-config';
+import { useGatewayProvision } from '../lib/use-gateway-provision';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 
 export default function AppHome() {
-  const provisionQuery = useQuery({
-    queryKey: ['gateway-provision'],
-    queryFn: authApi.provisionGateway,
-    refetchOnMount: 'always',
-    staleTime: 0,
-  });
+  const { provisionQuery, chatConfig } = useGatewayProvision();
 
   const profile = provisionQuery.data ?? null;
 
-  const chatConfig = useMemo(() => LOCAL_GATEWAY_CHAT_CONFIG, []);
+  const resolvedChatConfig = useMemo(
+    () =>
+      chatConfig ?? {
+        gatewayUrl: '',
+        token: undefined,
+        sessionKey: 'main',
+      },
+    [chatConfig]
+  );
 
   const {
     status,
@@ -53,7 +54,7 @@ export default function AppHome() {
     sendMessage,
     abort,
     loadHistory,
-  } = useGatewayChat(chatConfig);
+  } = useGatewayChat(resolvedChatConfig);
 
   const reconnect = () => {
     disconnect();
@@ -62,11 +63,11 @@ export default function AppHome() {
   };
 
   useEffect(() => {
-    if (!chatConfig.gatewayUrl || connected) return;
+    if (!resolvedChatConfig.gatewayUrl || connected) return;
     if (status === 'idle' || status === 'error') {
       connect();
     }
-  }, [chatConfig.gatewayUrl, connected, status, connect]);
+  }, [resolvedChatConfig.gatewayUrl, connected, status, connect]);
 
   const historyLoadedRef = useRef(false);
   useEffect(() => {

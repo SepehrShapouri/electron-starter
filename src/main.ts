@@ -180,6 +180,24 @@ const checkForAppUpdates = (manual = false) => {
     return appUpdateState;
   }
 
+  if (appUpdateState.status === 'available') {
+    if (manual) {
+      setAppUpdateState({
+        message: 'Update is already downloading in the background.',
+      });
+    }
+    return appUpdateState;
+  }
+
+  if (appUpdateState.status === 'downloaded') {
+    if (manual) {
+      setAppUpdateState({
+        message: 'Update is ready to install.',
+      });
+    }
+    return appUpdateState;
+  }
+
   setAppUpdateState({
     status: 'checking',
     checkedAt: Date.now(),
@@ -289,13 +307,30 @@ const initializeAutoUpdates = () => {
   );
 
   autoUpdaterEvents.on('error', (error: unknown) => {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Something went wrong while updating.';
+
+    if (
+      message.includes('The command is disabled and cannot be executed') &&
+      (appUpdateState.status === 'available' ||
+        appUpdateState.status === 'downloaded')
+    ) {
+      setAppUpdateState({
+        supported: true,
+        message:
+          appUpdateState.status === 'downloaded'
+            ? 'Update is ready to install.'
+            : 'Update is downloading in the background.',
+      });
+      return;
+    }
+
     setAppUpdateState({
       status: 'error',
       supported: true,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Something went wrong while updating.',
+      message,
     });
   });
 

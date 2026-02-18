@@ -1,7 +1,13 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Sheet,
   SheetContent,
@@ -16,7 +22,7 @@ import {
   installGatewaySkill,
   updateGatewaySkillEnabled,
 } from '@/lib/gateway-skills';
-import { LOCAL_GATEWAY_CONFIG } from '@/lib/local-gateway-config';
+import { useGatewayProvision } from '@/lib/use-gateway-provision';
 import type { SkillStatusEntry } from '@/lib/skills-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
@@ -24,24 +30,26 @@ import { useMemo, useState } from 'react';
 
 export default function SkillsPage() {
   const queryClient = useQueryClient();
-  const gatewayConfig = LOCAL_GATEWAY_CONFIG;
+  const { provisionQuery, gatewayConfig } = useGatewayProvision();
   const [selectedSkillKey, setSelectedSkillKey] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [installResult, setInstallResult] = useState<{ ok?: boolean; message?: string } | null>(
-    null
-  );
+  const [installResult, setInstallResult] = useState<{
+    ok?: boolean;
+    message?: string;
+  } | null>(null);
 
   const statusQuery = useQuery({
-    queryKey: ['skills-status', gatewayConfig.gatewayUrl],
-    queryFn: () => getGatewaySkillsStatus(gatewayConfig),
+    queryKey: ['skills-status', gatewayConfig?.gatewayUrl],
+    queryFn: () => getGatewaySkillsStatus(gatewayConfig!),
+    enabled: Boolean(gatewayConfig),
   });
 
   const toggleMutation = useMutation({
     mutationFn: (params: { skillKey: string; enabled: boolean }) =>
-      updateGatewaySkillEnabled(gatewayConfig, params),
+      updateGatewaySkillEnabled(gatewayConfig!, params),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['skills-status', gatewayConfig.gatewayUrl],
+        queryKey: ['skills-status', gatewayConfig?.gatewayUrl],
       });
     },
   });
@@ -53,7 +61,7 @@ export default function SkillsPage() {
       installId: string;
       timeoutMs?: number;
     }) =>
-      installGatewaySkill(gatewayConfig, {
+      installGatewaySkill(gatewayConfig!, {
         name: params.name,
         installId: params.installId,
         timeoutMs: params.timeoutMs,
@@ -64,14 +72,17 @@ export default function SkillsPage() {
     onSuccess: async res => {
       setInstallResult({ ok: res.ok, message: res.message });
       await queryClient.invalidateQueries({
-        queryKey: ['skills-status', gatewayConfig.gatewayUrl],
+        queryKey: ['skills-status', gatewayConfig?.gatewayUrl],
       });
       await queryClient.refetchQueries({
-        queryKey: ['skills-status', gatewayConfig.gatewayUrl],
+        queryKey: ['skills-status', gatewayConfig?.gatewayUrl],
       });
     },
     onError: err => {
-      setInstallResult({ ok: false, message: err instanceof Error ? err.message : String(err) });
+      setInstallResult({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+      });
     },
   });
 
@@ -95,12 +106,38 @@ export default function SkillsPage() {
     }
   };
 
+  if (!gatewayConfig && provisionQuery.isLoading) {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
+        <LoadingState />
+      </div>
+    );
+  }
+
+  if (!gatewayConfig && provisionQuery.isError) {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
+        <ErrorState
+          message={
+            provisionQuery.error instanceof Error
+              ? provisionQuery.error.message
+              : 'Unable to load gateway access.'
+          }
+          onRetry={() => provisionQuery.refetch()}
+          isRetrying={provisionQuery.isFetching}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-auto px-4 py-6 sm:px-6">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Skills</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Skills available for this app.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Skills available for this app.
+          </p>
         </div>
         <Button
           type="button"
@@ -185,11 +222,14 @@ export default function SkillsPage() {
           installMutation.isPending ? installMutation.variables?.skillKey : null
         }
         installResult={
-          selectedSkill && installMutation.variables?.skillKey === selectedSkill.skillKey
+          selectedSkill &&
+          installMutation.variables?.skillKey === selectedSkill.skillKey
             ? installResult
             : null
         }
-        togglePendingSkillKey={toggleMutation.isPending ? toggleMutation.variables?.skillKey : null}
+        togglePendingSkillKey={
+          toggleMutation.isPending ? toggleMutation.variables?.skillKey : null
+        }
         isInstalling={
           Boolean(selectedSkill) &&
           installMutation.isPending &&
@@ -246,7 +286,9 @@ function SkillCard({
             {skill.emoji ? `${skill.emoji} ` : ''}
             {skill.name}
           </h2>
-          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{skill.description}</p>
+          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+            {skill.description}
+          </p>
         </div>
         <StatusPill status={status} />
       </div>
@@ -286,7 +328,9 @@ function SkillDetailsSheet({
         <SheetHeader className="pb-0">
           <SheetTitle>{skill?.name ?? 'Skill details'}</SheetTitle>
           <SheetDescription>
-            {skill ? skill.description : 'Choose a skill from the list to see details.'}
+            {skill
+              ? skill.description
+              : 'Choose a skill from the list to see details.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -296,9 +340,7 @@ function SkillDetailsSheet({
               <dl className="grid gap-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-muted-foreground">Status</dt>
-                  <dd>
-                    {status ? <StatusPill status={status} /> : null}
-                  </dd>
+                  <dd>{status ? <StatusPill status={status} /> : null}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-muted-foreground">Enabled</dt>
@@ -306,7 +348,9 @@ function SkillDetailsSheet({
                     <Switch
                       id={`skill-enabled-${skill.skillKey}`}
                       checked={enabled}
-                      disabled={togglePendingSkillKey === skill.skillKey || isInstalling}
+                      disabled={
+                        togglePendingSkillKey === skill.skillKey || isInstalling
+                      }
                       onCheckedChange={checked => onToggle(Boolean(checked))}
                     />
                     <span>{enabled ? 'On' : 'Off'}</span>
@@ -367,14 +411,16 @@ function SkillDetailsSheet({
                   ) : installResult ? (
                     <div
                       className={
-                        "mt-3 rounded-md border p-3 text-sm " +
+                        'mt-3 rounded-md border p-3 text-sm ' +
                         (installResult.ok
                           ? 'border-emerald-500/30 bg-emerald-500/5'
                           : 'border-destructive/30 bg-destructive/5')
                       }
                     >
                       <div className="font-medium">
-                        {installResult.ok ? 'Install complete' : 'Install failed'}
+                        {installResult.ok
+                          ? 'Install complete'
+                          : 'Install failed'}
                       </div>
                       {installResult.message ? (
                         <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
@@ -394,7 +440,9 @@ function SkillDetailsSheet({
           </div>
         ) : (
           <div className="px-4 pb-4">
-            <p className="text-sm text-muted-foreground">Select a skill from the list.</p>
+            <p className="text-sm text-muted-foreground">
+              Select a skill from the list.
+            </p>
           </div>
         )}
       </SheetContent>
@@ -402,7 +450,9 @@ function SkillDetailsSheet({
   );
 }
 
-function resolveSkillStatus(skill: SkillStatusEntry): 'Ready' | 'Needs setup' | 'Disabled' {
+function resolveSkillStatus(
+  skill: SkillStatusEntry
+): 'Ready' | 'Needs setup' | 'Disabled' {
   if (skill.disabled) {
     return 'Disabled';
   }
@@ -412,7 +462,11 @@ function resolveSkillStatus(skill: SkillStatusEntry): 'Ready' | 'Needs setup' | 
   return 'Needs setup';
 }
 
-function StatusPill({ status }: { status: 'Ready' | 'Needs setup' | 'Disabled' }) {
+function StatusPill({
+  status,
+}: {
+  status: 'Ready' | 'Needs setup' | 'Disabled';
+}) {
   return (
     <Badge
       size="sm"
@@ -466,7 +520,9 @@ function describeSkillNeeds(skill: SkillStatusEntry): string[] {
   }
 
   if (items.length === 0 && !skill.eligible) {
-    items.push('This skill still needs setup before it can run on this machine.');
+    items.push(
+      'This skill still needs setup before it can run on this machine.'
+    );
   }
 
   return items;
@@ -495,7 +551,9 @@ function EmptyState() {
     <Card className="gap-2 py-8">
       <CardHeader className="items-center px-6 text-center">
         <CardTitle className="text-base">No skills found</CardTitle>
-        <CardDescription>Skills will appear here when available.</CardDescription>
+        <CardDescription>
+          Skills will appear here when available.
+        </CardDescription>
       </CardHeader>
     </Card>
   );
@@ -517,7 +575,12 @@ function ErrorState({
         <CardDescription>{message}</CardDescription>
       </CardHeader>
       <CardContent className="px-6">
-        <Button type="button" variant="outline" onClick={onRetry} disabled={isRetrying}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRetry}
+          disabled={isRetrying}
+        >
           {isRetrying ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
