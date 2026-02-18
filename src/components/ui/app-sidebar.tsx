@@ -24,6 +24,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isSkillsActive = Boolean(
     matchRoute({ to: '/app/skills', fuzzy: true })
   );
+  const isScheduledActive = Boolean(
+    matchRoute({ to: '/app/scheduled', fuzzy: true })
+  );
 
   return (
     <Sidebar variant="sidebar" {...props} className="border-r-0!">
@@ -64,11 +67,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Skills"
+                tooltip="Scheduled"
                 className="h-9"
-                isActive={isSkillsActive}
+                isActive={isScheduledActive}
               >
-                <Link to="/app/skills">
+                <Link to="/app/scheduled">
                   <IconCalendarClock className="h-4 w-4" />
                   <span>Scheduled</span>
                 </Link>

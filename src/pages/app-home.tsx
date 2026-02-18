@@ -28,6 +28,7 @@ import {
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
 import { authApi } from '../lib/auth-api';
+import { LOCAL_GATEWAY_CHAT_CONFIG } from '../lib/local-gateway-config';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 
 export default function AppHome() {
@@ -40,14 +41,7 @@ export default function AppHome() {
 
   const profile = provisionQuery.data ?? null;
 
-  const chatConfig = useMemo(
-    () => ({
-      gatewayUrl: profile?.gatewayUrl ?? '',
-      token: profile?.gatewayToken ?? undefined,
-      sessionKey: 'main',
-    }),
-    [profile]
-  );
+  const chatConfig = useMemo(() => LOCAL_GATEWAY_CHAT_CONFIG, []);
 
   const {
     status,
