@@ -20,6 +20,7 @@ const getAuthClientErrorMessage = (error: AuthClientError | null) => {
 };
 
 export type GatewayProvision = {
+  instanceId?: string | null;
   gatewayUrl: string;
   gatewayToken: string;
   userId?: string | null;
@@ -54,6 +55,11 @@ export type OnboardingCheckoutPayload = {
 
 export type OnboardingProvisionPayload = {
   encryptedPayload: string;
+};
+
+export type ProvisionStatusResponse = {
+  taskStatus?: string;
+  status?: string;
 };
 
 export const authApi = {
@@ -125,6 +131,13 @@ export const authApi = {
   provisionGateway: () =>
     apiClient
       .get<GatewayProvision>('/api/v1/infra/provision')
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  getProvisionStatus: (instanceId: string) =>
+    apiClient
+      .get<ProvisionStatusResponse>(`/api/v1/infra/provision/${instanceId}/status`)
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));

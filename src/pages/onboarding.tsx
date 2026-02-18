@@ -28,6 +28,7 @@ type OnboardingPageProps = {
 };
 
 const PENDING_ONBOARDING_PAYLOAD_KEY = 'clawpilot:pending_onboarding_payload';
+const ONBOARDING_LAUNCH_MOCK_ENABLED = false;
 
 const isPaidStatus = (status: string | null) =>
   status === 'active' || status === 'trialing';
@@ -105,6 +106,7 @@ export default function OnboardingPage({
     'idle' | 'launching' | 'failed'
   >('idle');
   const provisioningStarted = useRef(false);
+  const mockLaunchTimerRef = useRef<number | null>(null);
 
   const billingQuery = useQuery({
     queryKey: ['billing-status'],
@@ -144,8 +146,14 @@ export default function OnboardingPage({
     setProvisionState('launching');
     setErrorMessage('');
 
+    if (ONBOARDING_LAUNCH_MOCK_ENABLED) {
+      return;
+    }
+
     try {
-      await authApi.provisionFromOnboarding({ encryptedPayload: payload });
+      await authApi.provisionFromOnboarding({
+        encryptedPayload: payload,
+      });
       await authApi.saveOnboarding({ completed: true });
       await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       await queryClient.invalidateQueries({ queryKey: ['gateway-provision'] });
@@ -156,6 +164,23 @@ export default function OnboardingPage({
       setProvisionState('failed');
     }
   };
+
+  useEffect(() => {
+    if (!ONBOARDING_LAUNCH_MOCK_ENABLED || provisionState !== 'launching') {
+      return;
+    }
+
+    const runningTimer = window.setTimeout(() => {
+      setProvisionState('idle');
+    }, 3000);
+
+    mockLaunchTimerRef.current = runningTimer;
+
+    return () => {
+      window.clearTimeout(runningTimer);
+      mockLaunchTimerRef.current = null;
+    };
+  }, [provisionState]);
 
   useEffect(() => {
     const tween = gsap.fromTo(
@@ -332,15 +357,27 @@ export default function OnboardingPage({
     return (
       <div
         ref={containerRef}
-        className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-4 px-6 py-20"
+        className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-5 px-6 py-20"
       >
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
         <p className="text-2xl font-light tracking-tight text-foreground">
           Launching your agent...
         </p>
-        <p className="text-sm text-muted-foreground">
-          Payment received. Setting up your instance now.
-        </p>
+        <div className="w-full rounded-xl border border-border bg-background p-5">
+          {ONBOARDING_LAUNCH_MOCK_ENABLED && (
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Mock launch preview
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground">
+            Payment confirmed. Starting provisioning now...
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {ONBOARDING_LAUNCH_MOCK_ENABLED
+              ? 'Preview mode is enabled. No instance is being launched.'
+              : 'You will be redirected to dashboard launch status shortly.'}
+          </p>
+        </div>
       </div>
     );
   }
