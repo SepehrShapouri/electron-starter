@@ -271,7 +271,7 @@ export default function AppHome() {
         >
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder={connected ? 'Message Jarvis…' : 'Connecting…'}
+              placeholder={connected ? 'Message your assistant' : 'Clawing…'}
               className="bg-transparent placeholder:text-muted-foreground/60"
             />
           </PromptInputBody>
