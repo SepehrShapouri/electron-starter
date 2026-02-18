@@ -31,6 +31,9 @@ interface ElectronAPI {
   onAppUpdateStateChange: (
     callback: (value: AppUpdateState) => void
   ) => () => void;
+  openExternalUrl: (url: string) => Promise<void>;
+  getPendingAuthDeepLink: () => Promise<string | null>;
+  onAuthDeepLink: (callback: (url: string) => void) => () => void;
 }
 
 interface AppUpdateState {

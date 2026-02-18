@@ -48,6 +48,18 @@ const electronAPI = {
     return () =>
       ipcRenderer.removeListener('app-update:state-changed', listener);
   },
+  openExternalUrl: (url: string) =>
+    ipcRenderer.invoke('auth:open-external-url', url) as Promise<void>,
+  getPendingAuthDeepLink: () =>
+    ipcRenderer.invoke('auth:get-pending-deep-link') as Promise<string | null>,
+  onAuthDeepLink: (callback: (url: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: string) => {
+      callback(value);
+    };
+
+    ipcRenderer.on('auth:deep-link', listener);
+    return () => ipcRenderer.removeListener('auth:deep-link', listener);
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

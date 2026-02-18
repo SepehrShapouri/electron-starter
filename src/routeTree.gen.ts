@@ -14,7 +14,9 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthWelcomeRouteImport } from './routes/auth/welcome'
+import { Route as AuthSignupMagicLinkRouteImport } from './routes/auth/signup-magic-link'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthLoginMagicLinkRouteImport } from './routes/auth/login-magic-link'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AppSkillsRouteImport } from './routes/app/skills'
 import { Route as AppScheduledRouteImport } from './routes/app/scheduled'
@@ -45,9 +47,19 @@ const AuthWelcomeRoute = AuthWelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthSignupMagicLinkRoute = AuthSignupMagicLinkRouteImport.update({
+  id: '/signup-magic-link',
+  path: '/signup-magic-link',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginMagicLinkRoute = AuthLoginMagicLinkRouteImport.update({
+  id: '/login-magic-link',
+  path: '/login-magic-link',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -79,7 +91,9 @@ export interface FileRoutesByFullPath {
   '/app/scheduled': typeof AppScheduledRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
   '/auth/welcome': typeof AuthWelcomeRoute
   '/app/': typeof AppIndexRoute
 }
@@ -90,7 +104,9 @@ export interface FileRoutesByTo {
   '/app/scheduled': typeof AppScheduledRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
   '/auth/welcome': typeof AuthWelcomeRoute
   '/app': typeof AppIndexRoute
 }
@@ -103,7 +119,9 @@ export interface FileRoutesById {
   '/app/scheduled': typeof AppScheduledRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
   '/auth/welcome': typeof AuthWelcomeRoute
   '/app/': typeof AppIndexRoute
 }
@@ -117,7 +135,9 @@ export interface FileRouteTypes {
     | '/app/scheduled'
     | '/app/skills'
     | '/auth/login'
+    | '/auth/login-magic-link'
     | '/auth/signup'
+    | '/auth/signup-magic-link'
     | '/auth/welcome'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -128,7 +148,9 @@ export interface FileRouteTypes {
     | '/app/scheduled'
     | '/app/skills'
     | '/auth/login'
+    | '/auth/login-magic-link'
     | '/auth/signup'
+    | '/auth/signup-magic-link'
     | '/auth/welcome'
     | '/app'
   id:
@@ -140,7 +162,9 @@ export interface FileRouteTypes {
     | '/app/scheduled'
     | '/app/skills'
     | '/auth/login'
+    | '/auth/login-magic-link'
     | '/auth/signup'
+    | '/auth/signup-magic-link'
     | '/auth/welcome'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -188,11 +212,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthWelcomeRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/auth/signup-magic-link': {
+      id: '/auth/signup-magic-link'
+      path: '/signup-magic-link'
+      fullPath: '/auth/signup-magic-link'
+      preLoaderRoute: typeof AuthSignupMagicLinkRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/auth/signup': {
       id: '/auth/signup'
       path: '/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login-magic-link': {
+      id: '/auth/login-magic-link'
+      path: '/login-magic-link'
+      fullPath: '/auth/login-magic-link'
+      preLoaderRoute: typeof AuthLoginMagicLinkRouteImport
       parentRoute: typeof AuthRoute
     }
     '/auth/login': {
@@ -244,13 +282,17 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthLoginMagicLinkRoute: typeof AuthLoginMagicLinkRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  AuthSignupMagicLinkRoute: typeof AuthSignupMagicLinkRoute
   AuthWelcomeRoute: typeof AuthWelcomeRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
+  AuthLoginMagicLinkRoute: AuthLoginMagicLinkRoute,
   AuthSignupRoute: AuthSignupRoute,
+  AuthSignupMagicLinkRoute: AuthSignupMagicLinkRoute,
   AuthWelcomeRoute: AuthWelcomeRoute,
 }
 
