@@ -19,6 +19,8 @@ export type ChannelCardStatus = {
   tokenSource?: string | null;
   botUsername?: string | null;
   botId?: string | null;
+  selfE164?: string | null;
+  selfJid?: string | null;
 };
 
 export type ChannelsStatusResult = {
@@ -59,6 +61,21 @@ type ProbeBot = {
 
 type ProbePayload = {
   bot?: unknown;
+};
+
+type SelfPayload = {
+  e164?: unknown;
+  jid?: unknown;
+};
+
+export type WhatsAppQrStartResult = {
+  message: string | null;
+  qrDataUrl: string | null;
+};
+
+export type WhatsAppQrWaitResult = {
+  connected: boolean;
+  message: string | null;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -132,6 +149,9 @@ function normalizeChannelsStatus(payload: unknown): ChannelsStatusResult {
     const accountProbe = readProbeBot(account.probe);
     const botUsername = summaryProbe.botUsername ?? accountProbe.botUsername;
     const botId = summaryProbe.botId ?? accountProbe.botId;
+    const self = asRecord(summary.self as SelfPayload);
+    const selfE164 = asString(self?.e164);
+    const selfJid = asString(self?.jid);
 
     return {
       id,
@@ -146,6 +166,8 @@ function normalizeChannelsStatus(payload: unknown): ChannelsStatusResult {
       tokenSource,
       botUsername,
       botId,
+      selfE164,
+      selfJid,
     };
   });
 
@@ -241,6 +263,137 @@ export async function disconnectTelegramChannel(
     return {
       restartScheduled: isRestartScheduled(patchResult),
     };
+  });
+}
+
+export async function startWhatsAppQrLogin(
+  config: GatewayConnectionConfig,
+  params?: { force?: boolean; timeoutMs?: number; accountId?: string }
+): Promise<WhatsAppQrStartResult> {
+  try {
+    return await requestWhatsAppQrStart(config, params);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.toLowerCase().includes('web login provider is not available')) {
+      throw error;
+    }
+
+    await ensureWhatsAppProviderEnabled(config);
+    await waitForGatewayRecovery(config, 30_000);
+
+    return await requestWhatsAppQrStart(config, params);
+  }
+}
+
+async function requestWhatsAppQrStart(
+  config: GatewayConnectionConfig,
+  params?: { force?: boolean; timeoutMs?: number; accountId?: string }
+): Promise<WhatsAppQrStartResult> {
+  return await withGatewayClient(config, async ({ client }) => {
+    const result = await client.request<{ message?: unknown; qrDataUrl?: unknown }>(
+      'web.login.start',
+      {
+        force: params?.force ?? false,
+        timeoutMs: params?.timeoutMs,
+        accountId: params?.accountId,
+      }
+    );
+
+    return {
+      message: asString(result?.message),
+      qrDataUrl: asString(result?.qrDataUrl),
+    };
+  });
+}
+
+async function ensureWhatsAppProviderEnabled(config: GatewayConnectionConfig): Promise<void> {
+  await withGatewayClient(config, async ({ client }) => {
+    const snapshot = await client.request<ConfigSnapshot>('config.get', {});
+    const baseHash = asString(snapshot?.hash);
+    if (!baseHash) {
+      throw new Error('Config hash missing. Please retry.');
+    }
+
+    await client.request('config.patch', {
+      baseHash,
+      raw: JSON.stringify({
+        plugins: {
+          entries: {
+            whatsapp: {
+              enabled: true,
+            },
+          },
+        },
+      }),
+    });
+  });
+}
+
+async function waitForGatewayRecovery(
+  config: GatewayConnectionConfig,
+  timeoutMs: number
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await withGatewayClient(config, async ({ client }) => {
+        await client.request('channels.status', { probe: false, timeoutMs: 5000 });
+      });
+      return;
+    } catch {
+      await new Promise(resolve => window.setTimeout(resolve, 1200));
+    }
+  }
+  throw new Error('Gateway is still restarting. Please try again in a few seconds.');
+}
+
+export async function waitForWhatsAppQrLogin(
+  config: GatewayConnectionConfig,
+  params?: { timeoutMs?: number; accountId?: string }
+): Promise<WhatsAppQrWaitResult> {
+  return await withGatewayClient(config, async ({ client }) => {
+    const result = await client.request<{ connected?: unknown; message?: unknown }>(
+      'web.login.wait',
+      {
+        timeoutMs: params?.timeoutMs,
+        accountId: params?.accountId,
+      }
+    );
+
+    return {
+      connected: asBoolean(result?.connected) ?? false,
+      message: asString(result?.message),
+    };
+  });
+}
+
+export async function disconnectWhatsAppChannel(
+  config: GatewayConnectionConfig,
+  params?: { accountId?: string }
+): Promise<void> {
+  await withGatewayClient(config, async ({ client }) => {
+    await client.request('channels.logout', {
+      channel: 'whatsapp',
+      accountId: params?.accountId ?? 'default',
+    });
+  });
+}
+
+/**
+ * Trigger a gateway restart by sending a no-op config patch.
+ * Useful after a 515 pairing where creds are saved but the channel is stopped.
+ */
+export async function restartGateway(config: GatewayConnectionConfig): Promise<void> {
+  await withGatewayClient(config, async ({ client }) => {
+    const snapshot = await client.request<ConfigSnapshot>('config.get', {});
+    const baseHash = asString(snapshot?.hash);
+    if (!baseHash) {
+      return;
+    }
+    await client.request('config.patch', {
+      baseHash,
+      raw: JSON.stringify({}),
+    });
   });
 }
 

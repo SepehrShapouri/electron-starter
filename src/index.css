@@ -711,3 +711,8 @@ select,
   display: flex;
   align-items: center;
 }
+
+/* Keep toasts above sheet/dialog overlays */
+[data-sileo-viewport] {
+  z-index: 9999 !important;
+}
