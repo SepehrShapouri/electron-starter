@@ -20,6 +20,7 @@ import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginMagicLinkRouteImport } from './routes/auth/login-magic-link'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AppSkillsRouteImport } from './routes/app/skills'
+import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppScheduledRouteImport } from './routes/app/scheduled'
 import { Route as AppIntegrationsRouteImport } from './routes/app/integrations'
 
@@ -78,6 +79,11 @@ const AppSkillsRoute = AppSkillsRouteImport.update({
   path: '/skills',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppScheduledRoute = AppScheduledRouteImport.update({
   id: '/scheduled',
   path: '/scheduled',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/skills': typeof AppSkillsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/integrations'
     | '/app/scheduled'
+    | '/app/settings'
     | '/app/skills'
     | '/auth/login'
     | '/auth/login-magic-link'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/integrations'
     | '/app/scheduled'
+    | '/app/settings'
     | '/app/skills'
     | '/auth/login'
     | '/auth/login-magic-link'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/integrations'
     | '/app/scheduled'
+    | '/app/settings'
     | '/app/skills'
     | '/auth/login'
     | '/auth/login-magic-link'
@@ -267,6 +279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSkillsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/scheduled': {
       id: '/app/scheduled'
       path: '/scheduled'
@@ -287,6 +306,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppScheduledRoute: typeof AppScheduledRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppSkillsRoute: typeof AppSkillsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -294,6 +314,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppIntegrationsRoute: AppIntegrationsRoute,
   AppScheduledRoute: AppScheduledRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppSkillsRoute: AppSkillsRoute,
   AppIndexRoute: AppIndexRoute,
 }
