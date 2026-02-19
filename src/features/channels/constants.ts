@@ -1,4 +1,6 @@
-import { MessageCircle, Send, Speech } from 'lucide-react';
+import IconTelegram from '@/components/icons/IconTelegram.svg';
+import IconWhatsApp from '@/components/icons/IconWhatsApp.svg';
+import { Speech } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export type StaticChannel = {
@@ -37,7 +39,7 @@ export const STATIC_CHANNELS: StaticChannel[] = [
 ];
 
 export const CHANNEL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
-  telegram: Send,
-  whatsapp: MessageCircle,
+  telegram: IconTelegram,
+  whatsapp: IconWhatsApp,
   discord: Speech,
 };
