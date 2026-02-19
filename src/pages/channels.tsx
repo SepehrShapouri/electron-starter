@@ -107,18 +107,12 @@ export default function ChannelsPage() {
   const connectMutation = useMutation({
     mutationFn: (params: { token: string }) =>
       connectTelegramChannel(gatewayConfig!, params.token),
-    onSuccess: async result => {
+    onSuccess: async () => {
       setTelegramToken('');
       sileo.success({
         title: 'Telegram configured',
         description: 'Your bot token was saved successfully.',
       });
-      if (result.restartScheduled) {
-        sileo.info({
-          title: 'Gateway restarting',
-          description: 'Reconnecting to apply Telegram changes...',
-        });
-      }
       await queryClient.invalidateQueries({
         queryKey: ['channels-status', gatewayConfig?.gatewayUrl],
       });
@@ -130,17 +124,11 @@ export default function ChannelsPage() {
 
   const disconnectMutation = useMutation({
     mutationFn: () => disconnectTelegramChannel(gatewayConfig!),
-    onSuccess: async result => {
+    onSuccess: async () => {
       sileo.success({
         title: 'Telegram disconnected',
         description: 'Telegram was removed from your channel settings.',
       });
-      if (result.restartScheduled) {
-        sileo.info({
-          title: 'Gateway restarting',
-          description: 'Reconnecting to apply Telegram changes...',
-        });
-      }
       await queryClient.invalidateQueries({
         queryKey: ['channels-status', gatewayConfig?.gatewayUrl],
       });
