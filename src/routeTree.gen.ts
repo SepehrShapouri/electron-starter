@@ -23,6 +23,7 @@ import { Route as AppSkillsRouteImport } from './routes/app/skills'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppScheduledRouteImport } from './routes/app/scheduled'
 import { Route as AppIntegrationsRouteImport } from './routes/app/integrations'
+import { Route as AppChannelsRouteImport } from './routes/app/channels'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -94,12 +95,18 @@ const AppIntegrationsRoute = AppIntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => AppRoute,
 } as any)
+const AppChannelsRoute = AppChannelsRouteImport.update({
+  id: '/channels',
+  path: '/channels',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/app/channels': typeof AppChannelsRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
   '/app/settings': typeof AppSettingsRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/app/channels': typeof AppChannelsRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
   '/app/settings': typeof AppSettingsRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/app/channels': typeof AppChannelsRoute
   '/app/integrations': typeof AppIntegrationsRoute
   '/app/scheduled': typeof AppScheduledRoute
   '/app/settings': typeof AppSettingsRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/onboarding'
+    | '/app/channels'
     | '/app/integrations'
     | '/app/scheduled'
     | '/app/settings'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/onboarding'
+    | '/app/channels'
     | '/app/integrations'
     | '/app/scheduled'
     | '/app/settings'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/onboarding'
+    | '/app/channels'
     | '/app/integrations'
     | '/app/scheduled'
     | '/app/settings'
@@ -300,10 +312,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIntegrationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/channels': {
+      id: '/app/channels'
+      path: '/channels'
+      fullPath: '/app/channels'
+      preLoaderRoute: typeof AppChannelsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppChannelsRoute: typeof AppChannelsRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppScheduledRoute: typeof AppScheduledRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -312,6 +332,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppChannelsRoute: AppChannelsRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
   AppScheduledRoute: AppScheduledRoute,
   AppSettingsRoute: AppSettingsRoute,

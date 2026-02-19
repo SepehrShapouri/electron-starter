@@ -16,7 +16,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ArrowDownToLine, Loader2, RefreshCcwDot, Settings } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  Loader2,
+  RefreshCcwDot,
+  Settings,
+  Wrench,
+} from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -58,10 +64,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const isJarvisActive = pathname === '/app';
+  const isChannelsActive = pathname.startsWith('/app/channels');
   const isIntegrationsActive = pathname.startsWith('/app/integrations');
   const isSkillsActive = pathname.startsWith('/app/skills');
   const isScheduledActive = pathname.startsWith('/app/scheduled');
-  const isSettingsActive = pathname.startsWith('/app/settings')
+  const isSettingsActive = pathname.startsWith('/app/settings');
   return (
     <Sidebar variant="sidebar" {...props} className="border-r-0!">
       <SidebarHeader
@@ -114,13 +121,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Integrations"
+                tooltip="Channels"
                 className="h-9"
-                isActive={isIntegrationsActive}
+                isActive={isChannelsActive}
               >
-                <Link to="/app/integrations">
+                <Link to="/app/channels">
                   <IconIntegrations className="h-4 w-4" />
-                  <span>Tools</span>
+                  <span>Channels</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -128,6 +135,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton
                 asChild
                 tooltip="Integrations"
+                className="h-9"
+                isActive={isIntegrationsActive}
+              >
+                <Link to="/app/integrations">
+                  <Wrench className="h-4 w-4" />
+                  <span>Integrations</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Settings"
                 className="h-9"
                 isActive={isSettingsActive}
               >
