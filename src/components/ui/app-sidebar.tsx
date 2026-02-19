@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ArrowDownToLine, Loader2, RefreshCcwDot } from 'lucide-react';
+import { ArrowDownToLine, Loader2, RefreshCcwDot, Settings } from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -61,7 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isIntegrationsActive = pathname.startsWith('/app/integrations');
   const isSkillsActive = pathname.startsWith('/app/skills');
   const isScheduledActive = pathname.startsWith('/app/scheduled');
-
+  const isSettingsActive = pathname.startsWith('/app/settings')
   return (
     <Sidebar variant="sidebar" {...props} className="border-r-0!">
       <SidebarHeader
@@ -121,6 +121,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Link to="/app/integrations">
                   <IconIntegrations className="h-4 w-4" />
                   <span>Tools</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Integrations"
+                className="h-9"
+                isActive={isSettingsActive}
+              >
+                <Link to="/app/settings">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
