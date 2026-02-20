@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { authApi } from '@/lib/auth-api';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import {
   AlertCircle,
   Loader2,
@@ -29,8 +30,8 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
-import { useGatewayProvision } from '../lib/use-gateway-provision';
 import { useGatewayChat } from '../lib/use-gateway-chat';
+import { useGatewayProvision } from '../lib/use-gateway-provision';
 
 export default function AppHome() {
   const { provisionQuery, chatConfig } = useGatewayProvision();
@@ -46,7 +47,8 @@ export default function AppHome() {
       Boolean(profile) &&
       profile?.status !== 'running',
     refetchInterval: query => {
-      const taskStatus = query.state.data?.taskStatus ?? query.state.data?.status;
+      const taskStatus =
+        query.state.data?.taskStatus ?? query.state.data?.status;
       return taskStatus === 'running' ? false : 10000;
     },
   });
@@ -168,7 +170,9 @@ export default function AppHome() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="w-full max-w-md rounded-xl border border-border bg-background p-6">
-          <p className="text-xl font-semibold text-foreground">Launching your agent...</p>
+          <p className="text-xl font-semibold text-foreground">
+            Launching your agent...
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             Payment is confirmed. We are preparing your runtime.
           </p>
@@ -306,7 +310,6 @@ export default function AppHome() {
           <ConversationScrollButton />
         </Conversation>
       </div>
-
       <div className="shrink-0 bg-background/80 backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
         {error && (
           <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">

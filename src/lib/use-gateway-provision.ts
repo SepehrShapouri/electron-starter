@@ -8,12 +8,19 @@ export type GatewayProvisionConfig = {
   token?: string;
 };
 
-export function useGatewayProvision() {
+type UseGatewayProvisionOptions = {
+  enabled?: boolean;
+};
+
+export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
+  const { enabled = true } = options;
+
   const provisionQuery = useQuery({
     queryKey: ['gateway-provision'],
     queryFn: authApi.provisionGateway,
     refetchOnMount: 'always',
     staleTime: 0,
+    enabled,
   });
 
   const gatewayConfig = useMemo<GatewayProvisionConfig | null>(() => {

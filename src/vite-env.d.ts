@@ -33,6 +33,11 @@ interface ElectronAPI {
   ) => () => void;
   openExternalUrl: (url: string) => Promise<void>;
   getPendingAuthDeepLink: () => Promise<string | null>;
+  patchGatewayControlUiOrigins: (payload: {
+    gatewayUrl: string;
+    token: string;
+    origins: string[];
+  }) => Promise<boolean>;
   onAuthDeepLink: (callback: (url: string) => void) => () => void;
 }
 

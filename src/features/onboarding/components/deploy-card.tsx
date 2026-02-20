@@ -55,7 +55,7 @@ export function DeployCard({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-border bg-background p-4 sm:p-5">
+      <div className="rounded-xl  bg-background-2 shadow-fancy p-4 sm:p-5">
         <p className="mb-3 text-sm font-medium tracking-tight text-foreground">
           Setup summary
         </p>
@@ -77,7 +77,7 @@ export function DeployCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-4 sm:p-5">
+      <div className="flex flex-col gap-4 rounded-xl bg-background-2 shadow-fancy p-4 sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <p className="text-3xl font-light tracking-tight text-foreground">
             $25
@@ -90,12 +90,6 @@ export function DeployCard({
             Includes <span className="font-medium text-foreground">$10</span> in
             AI credits
           </p>
-        </div>
-
-        <div className="space-y-1.5 text-xs text-muted-foreground">
-          <p>- Secure hosted runtime</p>
-          <p>- One-click deployment flow</p>
-          <p>- Add more integrations anytime</p>
         </div>
 
         <Button
@@ -119,12 +113,6 @@ export function DeployCard({
                     ? 'Loading...'
                     : 'Subscribe & Launch'}
         </Button>
-
-        {!isSubscribed && (
-          <p className="text-center text-xs text-muted-foreground">
-            You&apos;ll get your credentials once provisioning completes.
-          </p>
-        )}
 
         {isSubscribed && canLaunchAfterSubscribe && (
           <p className="text-center text-xs text-muted-foreground">

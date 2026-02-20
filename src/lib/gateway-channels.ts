@@ -93,7 +93,10 @@ function asBoolean(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
 
-function readProbeBot(source: unknown): { botUsername: string | null; botId: string | null } {
+function readProbeBot(source: unknown): {
+  botUsername: string | null;
+  botId: string | null;
+} {
   const probe = asRecord(source as ProbePayload);
   const bot = asRecord(probe?.bot as ProbeBot);
   const botUsername = asString(bot?.username);
@@ -110,7 +113,9 @@ function readProbeBot(source: unknown): { botUsername: string | null; botId: str
 function normalizeChannelsStatus(payload: unknown): ChannelsStatusResult {
   const root = asRecord(payload);
   const order = Array.isArray(root?.channelOrder)
-    ? root.channelOrder.filter((item): item is string => typeof item === 'string')
+    ? root.channelOrder.filter(
+        (item): item is string => typeof item === 'string'
+      )
     : [];
   const labels = asRecord(root?.channelLabels) ?? {};
   const channelsSummary = asRecord(root?.channels) ?? {};
@@ -139,12 +144,17 @@ function normalizeChannelsStatus(payload: unknown): ChannelsStatusResult {
 
     const configured =
       asBoolean(summary.configured) ?? asBoolean(account.configured) ?? false;
-    const running = asBoolean(summary.running) ?? asBoolean(account.running) ?? false;
+    const running =
+      asBoolean(summary.running) ?? asBoolean(account.running) ?? false;
     const connected =
-      asBoolean(summary.connected) ?? asBoolean(account.connected) ?? (configured && running);
+      asBoolean(summary.connected) ??
+      asBoolean(account.connected) ??
+      (configured && running);
     const mode = asString(summary.mode) ?? asString(account.mode);
-    const lastError = asString(summary.lastError) ?? asString(account.lastError);
-    const tokenSource = asString(summary.tokenSource) ?? asString(account.tokenSource);
+    const lastError =
+      asString(summary.lastError) ?? asString(account.lastError);
+    const tokenSource =
+      asString(summary.tokenSource) ?? asString(account.tokenSource);
     const summaryProbe = readProbeBot(summary.probe);
     const accountProbe = readProbeBot(account.probe);
     const botUsername = summaryProbe.botUsername ?? accountProbe.botUsername;
@@ -156,7 +166,8 @@ function normalizeChannelsStatus(payload: unknown): ChannelsStatusResult {
     return {
       id,
       label: asString(labels[id]) ?? id,
-      description: CHANNEL_DESCRIPTIONS[id] ?? 'Configure this channel for your agent.',
+      description:
+        CHANNEL_DESCRIPTIONS[id] ?? 'Configure this channel for your agent.',
       configured,
       connected,
       running,
@@ -274,7 +285,9 @@ export async function startWhatsAppQrLogin(
     return await requestWhatsAppQrStart(config, params);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.toLowerCase().includes('web login provider is not available')) {
+    if (
+      !message.toLowerCase().includes('web login provider is not available')
+    ) {
       throw error;
     }
 
@@ -290,14 +303,14 @@ async function requestWhatsAppQrStart(
   params?: { force?: boolean; timeoutMs?: number; accountId?: string }
 ): Promise<WhatsAppQrStartResult> {
   return await withGatewayClient(config, async ({ client }) => {
-    const result = await client.request<{ message?: unknown; qrDataUrl?: unknown }>(
-      'web.login.start',
-      {
-        force: params?.force ?? false,
-        timeoutMs: params?.timeoutMs,
-        accountId: params?.accountId,
-      }
-    );
+    const result = await client.request<{
+      message?: unknown;
+      qrDataUrl?: unknown;
+    }>('web.login.start', {
+      force: params?.force ?? false,
+      timeoutMs: params?.timeoutMs,
+      accountId: params?.accountId,
+    });
 
     return {
       message: asString(result?.message),
@@ -306,7 +319,9 @@ async function requestWhatsAppQrStart(
   });
 }
 
-async function ensureWhatsAppProviderEnabled(config: GatewayConnectionConfig): Promise<void> {
+async function ensureWhatsAppProviderEnabled(
+  config: GatewayConnectionConfig
+): Promise<void> {
   await withGatewayClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
@@ -337,14 +352,19 @@ async function waitForGatewayRecovery(
   while (Date.now() < deadline) {
     try {
       await withGatewayClient(config, async ({ client }) => {
-        await client.request('channels.status', { probe: false, timeoutMs: 5000 });
+        await client.request('channels.status', {
+          probe: false,
+          timeoutMs: 5000,
+        });
       });
       return;
     } catch {
       await new Promise(resolve => window.setTimeout(resolve, 1200));
     }
   }
-  throw new Error('Gateway is still restarting. Please try again in a few seconds.');
+  throw new Error(
+    'Gateway is still restarting. Please try again in a few seconds.'
+  );
 }
 
 export async function waitForWhatsAppQrLogin(
@@ -352,13 +372,13 @@ export async function waitForWhatsAppQrLogin(
   params?: { timeoutMs?: number; accountId?: string }
 ): Promise<WhatsAppQrWaitResult> {
   return await withGatewayClient(config, async ({ client }) => {
-    const result = await client.request<{ connected?: unknown; message?: unknown }>(
-      'web.login.wait',
-      {
-        timeoutMs: params?.timeoutMs,
-        accountId: params?.accountId,
-      }
-    );
+    const result = await client.request<{
+      connected?: unknown;
+      message?: unknown;
+    }>('web.login.wait', {
+      timeoutMs: params?.timeoutMs,
+      accountId: params?.accountId,
+    });
 
     return {
       connected: asBoolean(result?.connected) ?? false,
@@ -383,7 +403,9 @@ export async function disconnectWhatsAppChannel(
  * Trigger a gateway restart by sending a no-op config patch.
  * Useful after a 515 pairing where creds are saved but the channel is stopped.
  */
-export async function restartGateway(config: GatewayConnectionConfig): Promise<void> {
+export async function restartGateway(
+  config: GatewayConnectionConfig
+): Promise<void> {
   await withGatewayClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
@@ -394,6 +416,44 @@ export async function restartGateway(config: GatewayConnectionConfig): Promise<v
       baseHash,
       raw: JSON.stringify({}),
     });
+  });
+}
+
+export async function allowGatewayControlUiOrigins(
+  config: GatewayConnectionConfig,
+  origins: string[]
+): Promise<void> {
+  const normalizedOrigins = Array.from(
+    new Set(
+      origins.map(origin => origin.trim()).filter(origin => origin.length > 0)
+    )
+  );
+
+  if (normalizedOrigins.length === 0) {
+    throw new Error('At least one allowed origin is required.');
+  }
+
+  await withGatewayClient(config, async ({ client }) => {
+    const snapshot = await client.request<ConfigSnapshot>('config.get', {});
+    const baseHash = asString(snapshot?.hash);
+    if (!baseHash) {
+      throw new Error('Config hash missing. Please retry.');
+    }
+
+    const patchResult = await client.request('config.patch', {
+      baseHash,
+      raw: JSON.stringify({
+        gateway: {
+          controlUi: {
+            allowedOrigins: normalizedOrigins,
+          },
+        },
+      }),
+    });
+
+    if (isRestartScheduled(patchResult)) {
+      await waitForGatewayRecovery(config, 30_000);
+    }
   });
 }
 
