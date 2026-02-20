@@ -162,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter className="gap-0">
-        {hasUpdate && !isDismissed ? (
+        {hasUpdate && !isDismissed && updateState.status === 'downloaded' ? (
           <Card className="gap-2 py-4 shadow-none">
             <CardHeader className="px-4">
               <div className="flex items-center gap-2">
@@ -183,35 +183,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </CardHeader>
             <CardContent className="px-4 flex flex-col gap-4">
               <p className="text-xs text-muted-foreground">
-                {updateState?.status === 'downloaded'
-                  ? 'Ready to install. The app will restart once you confirm.'
-                  : 'Downloading in the background. You can keep working.'}
+                Ready to install. The app will restart once you confirm.
               </p>
-              {updateState?.status === 'downloaded' ? (
-                <Button
-                  size="sm"
-                  onClick={handleInstallUpdate}
-                  disabled={isInstallingUpdate}
-                >
-                  {isInstallingUpdate ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ArrowDownToLine className="h-3.5 w-3.5" />
-                  )}
-                  {isInstallingUpdate ? 'Installing...' : 'Install now'}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    void checkForUpdates();
-                  }}
-                >
-                  <RefreshCcwDot className="h-3.5 w-3.5" />
-                  Check status
-                </Button>
-              )}
+              <Button
+                size="sm"
+                onClick={handleInstallUpdate}
+                disabled={isInstallingUpdate}
+              >
+                {isInstallingUpdate ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                )}
+                {isInstallingUpdate ? 'Installing...' : 'Install now'}
+              </Button>
             </CardContent>
           </Card>
         ) : null}
