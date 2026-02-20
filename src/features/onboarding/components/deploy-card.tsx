@@ -17,7 +17,7 @@ const INTEGRATION_LABELS: Record<string, string> = {
 type DeployCardProps = {
   provider: string;
   keySource: 'credits' | 'byok';
-  integration: string | null;
+  integration?: string | null;
   isSubscribing: boolean;
   isLaunching: boolean;
   isLoading: boolean;
@@ -48,7 +48,9 @@ export function DeployCard({
   const summaryItems = [
     { label: 'Model', value: providerLabel },
     { label: 'API keys', value: keySourceLabel },
-    { label: 'Integration', value: integrationLabel },
+    ...(integrationLabel
+      ? [{ label: 'Integration', value: integrationLabel }]
+      : []),
   ];
 
   return (
@@ -98,7 +100,9 @@ export function DeployCard({
 
         <Button
           className="h-11 w-full"
-          variant={isSubscribed && !canLaunchAfterSubscribe ? 'secondary' : 'default'}
+          variant={
+            isSubscribed && !canLaunchAfterSubscribe ? 'secondary' : 'default'
+          }
           disabled={isSubscribed ? !canLaunchAfterSubscribe || isBusy : isBusy}
           size="lg"
           onClick={onSubscribe}
@@ -109,11 +113,11 @@ export function DeployCard({
               ? 'Launch agent'
               : isSubscribed
                 ? 'Subscribed!'
-            : isSubscribing
-              ? 'Redirecting to checkout...'
-              : isLoading
-                ? 'Loading...'
-                : 'Subscribe & Launch'}
+                : isSubscribing
+                  ? 'Redirecting to checkout...'
+                  : isLoading
+                    ? 'Loading...'
+                    : 'Subscribe & Launch'}
         </Button>
 
         {!isSubscribed && (

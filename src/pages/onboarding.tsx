@@ -9,7 +9,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight, Info, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DeployCard } from '@/features/onboarding/components/deploy-card';
-import { IntegrationsCard } from '@/features/onboarding/components/integrations-card';
 import { ModelSelectCard } from '@/features/onboarding/components/model-select-card';
 import gsap from 'gsap';
 
@@ -19,7 +18,6 @@ type OnboardingSecrets = {
   model: string;
   apiKey?: string;
   keySource: KeySource;
-  telegramBotKey?: string;
 };
 
 type OnboardingPageProps = {
@@ -95,10 +93,6 @@ export default function OnboardingPage({
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [selectedModel, setSelectedModel] = useState('anthropic');
-  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(
-    'telegram'
-  );
-  const [botToken, setBotToken] = useState('');
   const [keySource, setKeySource] = useState<KeySource>('credits');
   const [apiKey, setApiKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -268,16 +262,6 @@ export default function OnboardingPage({
       }
       setErrorMessage('');
       setStep(2);
-      return;
-    }
-
-    if (step === 2) {
-      if (selectedIntegration === 'telegram' && !botToken.trim()) {
-        setErrorMessage('Bot token is required to continue');
-        return;
-      }
-      setErrorMessage('');
-      setStep(3);
     }
   };
 
@@ -290,16 +274,6 @@ export default function OnboardingPage({
     setStep(step - 1);
   };
 
-  const handleSkip = () => {
-    if (step !== 2) {
-      return;
-    }
-
-    setErrorMessage('');
-    setSelectedIntegration(null);
-    setStep(3);
-  };
-
   const handleSubscribe = async () => {
     if (subscribeMutation.isPending) {
       return;
@@ -308,11 +282,6 @@ export default function OnboardingPage({
     try {
       if (isByok && !apiKey.trim()) {
         setErrorMessage('API key is required');
-        return;
-      }
-
-      if (selectedIntegration === 'telegram' && !botToken.trim()) {
-        setErrorMessage('Bot token is required to continue');
         return;
       }
 
@@ -332,8 +301,6 @@ export default function OnboardingPage({
         model: selectedModel,
         apiKey: isByok ? apiKey : undefined,
         keySource,
-        telegramBotKey:
-          selectedIntegration === 'telegram' ? botToken.trim() : undefined,
       });
 
       if (isSubscribed) {
@@ -448,18 +415,12 @@ export default function OnboardingPage({
           <Clawpilot className="h-9 w-9 text-muted-foreground" />
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-light tracking-tight text-foreground sm:text-3xl">
-              {step === 1
-                ? 'Pick a model'
-                : step === 2
-                  ? 'Connect an integration'
-                  : 'Launch your agent'}
+              {step === 1 ? 'Pick a model' : 'Launch your agent'}
             </h1>
             <p className="text-sm text-muted-foreground">
               {step === 1
                 ? 'This powers your agent responses. You can switch it later.'
-                : step === 2
-                  ? 'Choose where your agent will live. You can add more later.'
-                  : 'Confirm your setup and subscribe to get your agent live.'}
+                : 'Confirm your setup, subscribe, and launch your agent.'}
             </p>
           </div>
         </div>
@@ -530,21 +491,9 @@ export default function OnboardingPage({
           )}
 
           {step === 2 && (
-            <IntegrationsCard
-              selectedIntegration={selectedIntegration}
-              onSelect={setSelectedIntegration}
-              botToken={botToken}
-              onBotTokenChange={setBotToken}
-            />
-          )}
-
-          {step === 3 && (
             <DeployCard
               provider={selectedModel}
               keySource={keySource}
-              integration={
-                selectedIntegration === 'openclaw' ? null : selectedIntegration
-              }
               isSubscribing={subscribeMutation.isPending}
               isLaunching={false}
               isLoading={billingQuery.isLoading}
@@ -573,13 +522,8 @@ export default function OnboardingPage({
             )}
           </div>
           <div>
-            {(step === 1 || step === 2) && (
+            {step === 1 && (
               <div className="flex items-center gap-2">
-                {step === 2 && (
-                  <Button variant="ghost" size="lg" onClick={handleSkip}>
-                    Skip
-                  </Button>
-                )}
                 <Button size="lg" onClick={handleContinue}>
                   Continue
                   <ArrowRight className="size-4" />
