@@ -23,7 +23,7 @@
 
   --color-modal: var(--modal);
   --color-floated: var(--floated);
-
+  --color-floated-blur:var(--floated-blur);
   --color-border: var(--neutral-a5);
   --color-ring: var(--blue-9);
 
@@ -290,7 +290,7 @@
 
   --modal: oklch(100% 0 0);
   --floated: oklch(100% 0 0);
-
+  --floated-blur:rgba(255, 255, 255, 0.92);
   --neutral-1: oklch(100% 0 0);
   --neutral-2: oklch(0.974 0.004 286.33);
   --neutral-3: oklch(0.9668 0.0058 264.53);
@@ -490,7 +490,7 @@
 
   --modal: oklch(0.2099 0.0039 286.06);
   --floated: oklch(0.2099 0.0039 286.06);
-
+  --floated-blur:rgba(24, 24, 26, 0.57);
   --neutral-1: oklch(0.1541 0.0046 264.43);
   --neutral-2: oklch(0.2099 0.0039 286.06);
   --neutral-3: oklch(0.2532 0.0056 285.99);

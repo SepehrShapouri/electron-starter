@@ -102,33 +102,17 @@ function toHistoryItems(messages: unknown[]): HistoryItem[] {
     .filter((item): item is HistoryItem => Boolean(item?.content));
 }
 
-function historyEquals(a: HistoryItem[], b: HistoryItem[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i]?.role !== b[i]?.role || a[i]?.content !== b[i]?.content) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function historyIsPrefix(prefix: HistoryItem[], full: HistoryItem[]): boolean {
-  if (prefix.length > full.length) return false;
-  for (let i = 0; i < prefix.length; i += 1) {
-    if (
-      prefix[i]?.role !== full[i]?.role ||
-      prefix[i]?.content !== full[i]?.content
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
+export type QueueItem = {
+  id: string;
+  text: string;
+  createdAt: number;
+};
 
 export function useGatewayChat(config: GatewayChatConfig) {
   const [status, setStatus] = useState<GatewayChatStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [resolvedSessionKey, setResolvedSessionKey] = useState(
     normalizeSessionKeyForDefaults(config.sessionKey)
   );
@@ -137,6 +121,10 @@ export function useGatewayChat(config: GatewayChatConfig) {
   const runToMessageId = useRef(new Map<string, string>());
   const currentRunId = useRef<string | null>(null);
   const sessionDefaultsRef = useRef<SessionDefaultsSnapshot | null>(null);
+  const queueRef = useRef<QueueItem[]>([]);
+  const isBusyRef = useRef(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const flushQueueRef = useRef<() => Promise<void>>(async () => {});
 
   const loadHistory = useCallback(async () => {
     if (!clientRef.current) return;
@@ -147,42 +135,14 @@ export function useGatewayChat(config: GatewayChatConfig) {
       })) as { messages?: unknown[] };
       const rawMessages = res.messages ?? [];
       const history = toHistoryItems(rawMessages);
-      setMessages(prev => {
-        const prevHistory = prev.map(item => ({
+      setMessages(
+        history.map((item, index): ChatMessage => ({
+          id: `${item.role}-history-${index}`,
           role: item.role,
           content: item.content,
-        }));
-        if (historyEquals(prevHistory, history)) {
-          return prev;
-        }
-        if (historyIsPrefix(prevHistory, history)) {
-          const finalized = prev.map(
-            (item): ChatMessage =>
-              item.status === 'streaming' ? { ...item, status: 'final' } : item
-          );
-          const extra = history
-            .slice(prevHistory.length)
-            .map((item, index): ChatMessage => {
-              const messageId = `${item.role}-history-${prevHistory.length + index}`;
-              return {
-                id: messageId,
-                role: item.role,
-                content: item.content,
-                status: 'final',
-              };
-            });
-          return [...finalized, ...extra];
-        }
-        return history.map((item, index): ChatMessage => {
-          const messageId = `${item.role}-history-${index}`;
-          return {
-            id: messageId,
-            role: item.role,
-            content: item.content,
-            status: 'final',
-          };
-        });
-      });
+          status: 'final',
+        }))
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -236,6 +196,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
       }
 
       if (payload.state === 'final') {
+        isBusyRef.current = false;
         setStatus('ready');
         if (messageId) {
           setMessages(prev =>
@@ -250,10 +211,11 @@ export function useGatewayChat(config: GatewayChatConfig) {
             )
           );
         }
-        void loadHistory();
+        void flushQueueRef.current();
       }
 
       if (payload.state === 'error') {
+        isBusyRef.current = false;
         setStatus('error');
         const message = payload.errorMessage ?? 'chat error';
         setError(message);
@@ -269,10 +231,12 @@ export function useGatewayChat(config: GatewayChatConfig) {
       }
 
       if (payload.state === 'aborted') {
+        isBusyRef.current = false;
         setStatus('ready');
+        void flushQueueRef.current();
       }
     },
-    [loadHistory, resolvedSessionKey]
+    [resolvedSessionKey]
   );
 
   const connect = useCallback(() => {
@@ -337,18 +301,18 @@ export function useGatewayChat(config: GatewayChatConfig) {
     setStatus('idle');
   }, []);
 
-  const sendMessage = useCallback(
+  const sendMessageNow = useCallback(
     async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || !clientRef.current) return;
+      if (!clientRef.current) return false;
 
       const runId = crypto.randomUUID();
       currentRunId.current = runId;
+      isBusyRef.current = true;
 
       const userMessage: ChatMessage = {
         id: `user-${runId}`,
         role: 'user',
-        content: trimmed,
+        content: text,
         status: 'final',
       };
       const assistantMessageId = `assistant-${runId}`;
@@ -370,14 +334,16 @@ export function useGatewayChat(config: GatewayChatConfig) {
       try {
         await clientRef.current.request('chat.send', {
           sessionKey: sessionKeyRef.current,
-          message: trimmed,
+          message: text,
           deliver: false,
           idempotencyKey: runId,
         });
+        return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
         setStatus('error');
+        isBusyRef.current = false;
         setMessages(prev =>
           prev.map(item =>
             item.id === assistantMessageId
@@ -385,10 +351,48 @@ export function useGatewayChat(config: GatewayChatConfig) {
               : item
           )
         );
+        return false;
       }
     },
     [resolvedSessionKey]
   );
+
+  const flushQueue = useCallback(async () => {
+    if (isBusyRef.current) return;
+    const [next, ...rest] = queueRef.current;
+    if (!next) return;
+    queueRef.current = rest;
+    setQueue(rest);
+    await sendMessageNow(next.text);
+  }, [sendMessageNow]);
+
+  flushQueueRef.current = flushQueue;
+
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !clientRef.current) return;
+
+      if (isBusyRef.current) {
+        const item: QueueItem = {
+          id: crypto.randomUUID(),
+          text: trimmed,
+          createdAt: Date.now(),
+        };
+        queueRef.current = [...queueRef.current, item];
+        setQueue(prev => [...prev, item]);
+        return;
+      }
+
+      await sendMessageNow(trimmed);
+    },
+    [sendMessageNow]
+  );
+
+  const removeFromQueue = useCallback((id: string) => {
+    queueRef.current = queueRef.current.filter(item => item.id !== id);
+    setQueue(prev => prev.filter(item => item.id !== id));
+  }, []);
 
   const abort = useCallback(async () => {
     if (!clientRef.current) return;
@@ -433,10 +437,12 @@ export function useGatewayChat(config: GatewayChatConfig) {
     status,
     error,
     messages,
+    queue,
     connected,
     connect,
     disconnect,
     sendMessage,
+    removeFromQueue,
     abort,
     loadHistory,
     applySessionDefaults,

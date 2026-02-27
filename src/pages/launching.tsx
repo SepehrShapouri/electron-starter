@@ -305,14 +305,6 @@ export default function LaunchingPage() {
             </div>
           )}
         </div>
-
-        {!ONBOARDING_LAUNCH_STATUS_MOCK_ENABLED &&
-          instanceStatusQuery.isFetching && (
-            <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Checking latest launch status…
-            </div>
-          )}
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ function GatewayLifecycleBridge() {
 
 type DeepLinkRoute =
   | '/app'
+  | '/app/integrations'
   | '/onboarding'
   | '/auth/welcome'
   | '/auth/login'
@@ -28,6 +29,7 @@ type DeepLinkRoute =
 const getSafeDeepLinkPath = (value: string | null, fallback: DeepLinkRoute) => {
   if (
     value === '/app' ||
+    value === '/app/integrations' ||
     value === '/onboarding' ||
     value === '/auth/welcome' ||
     value === '/auth/login' ||
@@ -82,6 +84,16 @@ const parseAuthDeepLink = (url: string) => {
       }
     }
 
+    if (parsed.pathname === '/callback') {
+      return {
+        type: 'callback' as const,
+        nextPath: getSafeDeepLinkPath(
+          parsed.searchParams.get('next'),
+          '/app/integrations',
+        ),
+      };
+    }
+
     if (parsed.pathname === '/error') {
       return {
         type: 'error' as const,
@@ -127,6 +139,11 @@ function App() {
             ...(deepLink.data ? { data: deepLink.data } : {}),
           },
         });
+        return;
+      }
+
+      if (deepLink.type === 'callback') {
+        router.navigate({ to: deepLink.nextPath });
         return;
       }
 

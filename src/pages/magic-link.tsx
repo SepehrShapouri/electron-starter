@@ -1,4 +1,5 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import TermsCheckbox from '@/components/auth/terms-checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Clawpilot from '@/components/icons/Clawpilot.svg';
@@ -18,12 +19,15 @@ type MagicLinkPageProps = {
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'https://api.clawpilot.ai';
 const desktopAuthBridgeBase = `${apiBaseUrl}/api/v1/auth/electron`;
+const TERMS_ERROR_MESSAGE =
+  'Please accept the Terms of Service, Privacy Policy, and EULA to continue.';
 
 export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
   const isSignUp = mode === 'signup';
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const backPath = isSignUp ? '/auth/signup' : '/auth/login';
   const currentPath = isSignUp
@@ -51,21 +55,28 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
 
     setErrorMessage('');
 
+    if (isSignUp && !termsAccepted) {
+      setErrorMessage(TERMS_ERROR_MESSAGE);
+      return;
+    }
+
     try {
       await sendMagicLinkMutation.mutateAsync({
         email,
         callbackURL: `${desktopAuthBridgeBase}/callback?next=${encodeURIComponent(
-          continuePath,
+          continuePath
         )}`,
-        newUserCallbackURL: `${desktopAuthBridgeBase}/callback?next=/auth/welcome`,
+        newUserCallbackURL: `${desktopAuthBridgeBase}/callback?next=${encodeURIComponent(
+          isSignUp ? '/onboarding' : '/auth/welcome'
+        )}`,
         errorCallbackURL: `${desktopAuthBridgeBase}/error?next=${encodeURIComponent(
-          currentPath,
+          currentPath
         )}`,
       });
       setMagicLinkSent(true);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to send magic link.',
+        error instanceof Error ? error.message : 'Unable to send magic link.'
       );
     }
   };
@@ -136,6 +147,13 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
               setEmail(event.target.value);
             }}
           />
+
+          {isSignUp ? (
+            <TermsCheckbox
+              checked={termsAccepted}
+              onCheckedChange={setTermsAccepted}
+            />
+          ) : null}
 
           <Button
             type="submit"

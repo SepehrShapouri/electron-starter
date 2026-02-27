@@ -30,6 +30,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
+import { QueuePill } from '../components/app/queue-pill';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
 
@@ -78,10 +79,12 @@ export default function AppHome() {
     status,
     error,
     messages,
+    queue,
     connected,
     connect,
     disconnect,
     sendMessage,
+    removeFromQueue,
     abort,
     loadHistory,
   } = useGatewayChat(resolvedChatConfig);
@@ -186,12 +189,6 @@ export default function AppHome() {
               This usually takes less than a minute.
             </p>
           </div>
-          {instanceStatusQuery.isFetching && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Checking latest launch status...
-            </div>
-          )}
         </div>
       </div>
     );
@@ -310,7 +307,8 @@ export default function AppHome() {
           <ConversationScrollButton />
         </Conversation>
       </div>
-      <div className="shrink-0 bg-background/80 backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
+      <QueuePill queue={queue} onRemove={removeFromQueue} />
+      <div className="shrink-0  backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
         {error && (
           <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="relative overflow-hidden rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/5 via-background to-background p-4 shadow-lg shadow-destructive/5">
@@ -381,7 +379,7 @@ export default function AppHome() {
         )}
         <PromptInput
           onSubmit={({ text }) => sendMessage(text)}
-          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy"
+          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated-blur **:data-[slot=input-group]:shadow-fancy"
         >
           <PromptInputBody>
             <PromptInputTextarea

@@ -16,13 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useRouterState } from '@tanstack/react-router';
-import {
-  ArrowDownToLine,
-  Loader2,
-  RefreshCcwDot,
-  Settings,
-  Wrench,
-} from 'lucide-react';
+import { ArrowDownToLine, Loader2, Puzzle, Settings } from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -35,7 +29,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = useRouterState({
     select: state => state.location.pathname,
   });
-  const { updateState, checkForUpdates, installUpdate } = useAppUpdate();
+  const { updateState, installUpdate } = useAppUpdate();
   const [isInstallingUpdate, setIsInstallingUpdate] = React.useState(false);
   const [dismissedVersion, setDismissedVersion] = React.useState<string | null>(
     null
@@ -131,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {/* <SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 tooltip="Integrations"
@@ -139,11 +133,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive={isIntegrationsActive}
               >
                 <Link to="/app/integrations">
-                  <Wrench className="h-4 w-4" />
+                  <Puzzle className="h-4 w-4" />
                   <span>Integrations</span>
                 </Link>
               </SidebarMenuButton>
-            </SidebarMenuItem> */}
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

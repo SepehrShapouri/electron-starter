@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { LegalLinks } from '@/components/auth/legal-links';
 import Clawpilot from '@/components/icons/Clawpilot.svg';
 import Google from '@/components/icons/Google.svg';
 import IconMagicWand2 from '@/components/icons/IconMagicWand2.svg';
@@ -127,7 +128,7 @@ export default function Login() {
   }, []);
 
   const navigateWithExit = (
-    to: '/auth/welcome' | '/auth/signup' | '/auth/login-magic-link',
+    to: '/auth/welcome' | '/auth/signup' | '/auth/login-magic-link'
   ) => {
     gsap
       .timeline({
@@ -213,9 +214,7 @@ export default function Login() {
               </button>
             </div>
             {errors.password?.message && (
-              <p className="text-xs text-red-9">
-                {errors.password.message}
-              </p>
+              <p className="text-xs text-red-9">{errors.password.message}</p>
             )}
           </div>
 
@@ -286,8 +285,7 @@ export default function Login() {
       </div>
 
       <p className="px-2 text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{' '}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <LegalLinks />.
       </p>
     </div>
   );
