@@ -38,6 +38,7 @@ interface ElectronAPI {
     gatewayUrl: string;
     token: string;
     origins: string[];
+    composioDefaultUserId: string;
   }) => Promise<boolean>;
   onAuthDeepLink: (callback: (url: string) => void) => () => void;
 }

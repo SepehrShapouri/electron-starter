@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { authApi } from '@/lib/auth-api';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import {
   AlertCircle,
   Loader2,

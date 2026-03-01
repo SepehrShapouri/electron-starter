@@ -43,6 +43,27 @@ const toLaunchStatus = (value: string | null | undefined): LaunchStatus => {
   return 'provisioning';
 };
 
+const getUserIdFromSession = (session: unknown) => {
+  if (!session || typeof session !== 'object') {
+    return '';
+  }
+
+  const sessionRecord = session as {
+    user?: { id?: unknown };
+    id?: unknown;
+  };
+
+  if (typeof sessionRecord.user?.id === 'string') {
+    return sessionRecord.user.id.trim();
+  }
+
+  if (typeof sessionRecord.id === 'string') {
+    return sessionRecord.id.trim();
+  }
+
+  return '';
+};
+
 export default function LaunchingPage() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,9 +111,19 @@ export default function LaunchingPage() {
     mutationFn: async () => {
       const gatewayUrl = profile?.gatewayUrl?.trim();
       const gatewayToken = profile?.gatewayToken?.trim();
+      let composioDefaultUserId = profile?.userId?.trim() ?? '';
 
       if (!gatewayUrl || !gatewayToken) {
         throw new Error('Gateway credentials are not ready yet.');
+      }
+
+      if (!composioDefaultUserId) {
+        const session = await authApi.getSession().catch(() => null);
+        composioDefaultUserId = getUserIdFromSession(session);
+      }
+
+      if (!composioDefaultUserId) {
+        throw new Error('Unable to resolve user id for Composio setup.');
       }
 
       if (!window.electronAPI) {
@@ -103,6 +134,7 @@ export default function LaunchingPage() {
         gatewayUrl,
         token: gatewayToken,
         origins: ['null', 'http://localhost:5173'],
+        composioDefaultUserId,
       });
     },
   });

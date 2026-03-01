@@ -28,7 +28,7 @@ export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
     if (!profile?.gatewayUrl) {
       return null;
     }
-
+    
     return {
       gatewayUrl: profile.gatewayUrl,
       token: profile.gatewayToken || undefined,

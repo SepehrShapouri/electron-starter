@@ -167,15 +167,19 @@ const patchGatewayControlUiOrigins = async (params: {
   gatewayUrl: string;
   token: string;
   origins: string[];
+  composioDefaultUserId: string;
 }) => {
   const gatewayUrl = params.gatewayUrl.trim();
   const token = params.token.trim();
   const origins = Array.from(
     new Set(params.origins.map(origin => origin.trim()).filter(Boolean))
   );
+  const composioDefaultUserId = params.composioDefaultUserId.trim();
 
-  if (!gatewayUrl || !token || origins.length === 0) {
-    throw new Error('gatewayUrl, token, and origins are required.');
+  if (!gatewayUrl || !token || origins.length === 0 || !composioDefaultUserId) {
+    throw new Error(
+      'gatewayUrl, token, origins, and composioDefaultUserId are required.'
+    );
   }
 
   const ws = new WebSocket(toGatewaySocketUrl(gatewayUrl));
@@ -249,6 +253,15 @@ const patchGatewayControlUiOrigins = async (params: {
                   allowedOrigins: origins,
                 },
               },
+              plugins: {
+                entries: {
+                  composio: {
+                    config: {
+                      defaultUserId: composioDefaultUserId,
+                    },
+                  },
+                },
+              },
             }),
           });
 
@@ -262,7 +275,7 @@ const patchGatewayControlUiOrigins = async (params: {
             new Error(
               readGatewayErrorMessage(
                 error,
-                'Unable to patch gateway allowed origins.'
+                'Unable to patch gateway launch configuration.'
               )
             )
           );
@@ -680,7 +693,12 @@ ipcMain.handle(
   'gateway:patch-control-ui-origins',
   async (
     _event,
-    payload: { gatewayUrl: string; token: string; origins: string[] }
+    payload: {
+      gatewayUrl: string;
+      token: string;
+      origins: string[];
+      composioDefaultUserId: string;
+    }
   ) => {
     await patchGatewayControlUiOrigins(payload);
     return true;

@@ -56,6 +56,7 @@ const electronAPI = {
     gatewayUrl: string;
     token: string;
     origins: string[];
+    composioDefaultUserId: string;
   }) =>
     ipcRenderer.invoke(
       'gateway:patch-control-ui-origins',
