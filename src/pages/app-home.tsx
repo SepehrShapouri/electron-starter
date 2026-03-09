@@ -91,8 +91,7 @@ export default function AppHome() {
 
   const reconnect = () => {
     disconnect();
-    // Small delay to ensure cleanup before reconnecting
-    setTimeout(() => connect(), 100);
+    connect();
   };
 
   useEffect(() => {
