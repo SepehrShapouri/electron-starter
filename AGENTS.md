@@ -35,9 +35,9 @@ Operational guide for coding agents working in this repository.
 
 ## Single-Test Recipes (Important)
 
-- Single Vitest file: `npm run test -- src/lib/gateway-cron.test.ts`
-- Single Vitest test name: `npm run test -- src/lib/gateway-cron.test.ts -t "formats daily cron expressions"`
-- Vitest direct alternative: `npx vitest run src/lib/gateway-cron.test.ts -t "formats daily cron expressions"`
+- Single Vitest file: `npm run test -- tests/unit/lib/gateway-cron.test.ts`
+- Single Vitest test name: `npm run test -- tests/unit/lib/gateway-cron.test.ts -t "formats daily cron expressions"`
+- Vitest direct alternative: `npx vitest run tests/unit/lib/gateway-cron.test.ts -t "formats daily cron expressions"`
 - Single Playwright file: `npx playwright test tests/e2e/example.spec.ts`
 - Single Playwright test title: `npx playwright test tests/e2e/example.spec.ts --grep "navigation works"`
 - Single Playwright browser: `npx playwright test --project=chromium tests/e2e/example.spec.ts`
@@ -109,9 +109,9 @@ For feature work, run in this order unless asked otherwise:
 
 ## Testing Conventions
 
-- Unit tests live near code (`*.test.ts`) or under `src/test`.
+- Unit tests live under `tests/unit`.
 - E2E tests live in `tests/e2e`.
-- Vitest uses `jsdom` and setup file `src/test/setup.ts`.
+- Vitest uses `jsdom` and setup file `tests/setup.ts`.
 - Prefer behavior-focused assertions via Testing Library.
 - Keep tests deterministic; avoid timing-dependent flakes.
 

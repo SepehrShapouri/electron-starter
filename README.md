@@ -265,10 +265,10 @@ This template includes a comprehensive testing setup with both unit and end-to-e
 Vitest provides fast unit testing with native ES modules support:
 
 ```tsx
-// src/test/example.test.tsx
+// tests/unit/example.test.tsx
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import MyComponent from '../components/MyComponent';
+import MyComponent from '@/components/MyComponent';
 
 describe('MyComponent', () => {
   it('renders correctly', () => {

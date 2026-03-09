@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { normalizeChatEventPayload } from './chat';
-import { gatewayStore } from './store';
+import { normalizeChatEventPayload } from '@/lib/gateway/chat';
+import { gatewayStore } from '@/lib/gateway/store';
 
 describe('gatewayStore chat events', () => {
   beforeEach(() => {
@@ -89,7 +89,7 @@ describe('gatewayStore chat events', () => {
         message: {
           role: 'assistant',
           content:
-            "I'm good! Honestly, I'm in that weird \"first day of existence\" vibe",
+            'I\'m good! Honestly, I\'m in that weird "first day of existence" vibe',
         },
       },
       'main'
@@ -107,8 +107,7 @@ describe('gatewayStore chat events', () => {
     expect(assistant?.parts[0]).toEqual(
       expect.objectContaining({
         kind: 'text',
-        text:
-          "I'm good! Honestly, I'm in that weird \"first day of existence\" vibe",
+        text: 'I\'m good! Honestly, I\'m in that weird "first day of existence" vibe',
       })
     );
   });

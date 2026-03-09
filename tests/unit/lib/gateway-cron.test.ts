@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeCronExpression, describeCronSchedule, summarizeCronPayload } from './gateway-cron';
-import type { CronJob } from './cron-types';
+import {
+  describeCronExpression,
+  describeCronSchedule,
+  summarizeCronPayload,
+} from '@/lib/gateway-cron';
+import type { CronJob } from '@/lib/cron-types';
 
 describe('describeCronExpression', () => {
   it('formats daily cron expressions', () => {
@@ -19,13 +23,15 @@ describe('describeCronExpression', () => {
 
 describe('describeCronSchedule', () => {
   it('formats every schedule', () => {
-    expect(describeCronSchedule({ kind: 'every', everyMs: 60_000 })).toBe('Every 1 minute');
+    expect(describeCronSchedule({ kind: 'every', everyMs: 60_000 })).toBe(
+      'Every 1 minute'
+    );
   });
 
   it('formats cron schedule with timezone', () => {
-    expect(describeCronSchedule({ kind: 'cron', expr: '*/15 * * * *', tz: 'UTC' })).toBe(
-      'Every 15 minutes (UTC)'
-    );
+    expect(
+      describeCronSchedule({ kind: 'cron', expr: '*/15 * * * *', tz: 'UTC' })
+    ).toBe('Every 15 minutes (UTC)');
   });
 });
 

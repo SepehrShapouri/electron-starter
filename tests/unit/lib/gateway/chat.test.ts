@@ -4,7 +4,7 @@ import {
   getMessageText,
   normalizeChatEventPayload,
   normalizeChatMessage,
-} from './chat';
+} from '@/lib/gateway/chat';
 
 describe('normalizeChatEventPayload', () => {
   it('ignores tool part updates in the plain-text projection', () => {
