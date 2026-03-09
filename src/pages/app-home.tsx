@@ -1,20 +1,22 @@
+import Clawpilot from '@/components/icons/Clawpilot.svg';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Progress } from '@/components/ui/progress';
 import { authApi } from '@/lib/auth-api';
 import { useQuery } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  Loader2,
-  RefreshCw,
-  Unplug,
-  WifiOff,
-  X,
-} from 'lucide-react';
+import { Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from '../components/ai-elements/conversation';
 import {
@@ -32,7 +34,6 @@ import {
 import { QueuePill } from '../components/app/queue-pill';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
-
 export default function AppHome() {
   const { provisionQuery, chatConfig } = useGatewayProvision();
 
@@ -77,10 +78,10 @@ export default function AppHome() {
   const {
     status,
     error,
-    messages,
     queue,
     connected,
     connect,
+    messages,
     disconnect,
     sendMessage,
     removeFromQueue,
@@ -88,7 +89,6 @@ export default function AppHome() {
     loadHistory,
     historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
-
   const reconnect = () => {
     disconnect();
     // Small delay to ensure cleanup before reconnecting
@@ -244,73 +244,87 @@ export default function AppHome() {
           ? 'error'
           : 'ready';
 
+  if (error) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Clawpilot className="text-muted-foreground size-10" />
+          </EmptyMedia>
+          <Alert variant="secondaryDestructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <EmptyDescription>
+            We are having issues waking up your lobster, please try again or if
+            the issue persists, reach out to us.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <div className="flex flex-row justify-center gap-2">
+            <Button size="sm" onClick={reconnect}>
+              Try again
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href="mailto:support@clawpilot.ai">Contact us</a>
+            </Button>
+          </div>
+        </EmptyContent>
+      </Empty>
+    );
+  }
+
+  if (status === 'connecting') {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Loader2 className="text-muted-foreground size-10 animate-spin" />
+          </EmptyMedia>
+          <EmptyTitle>Waking up your lobster</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <div className="relative flex h-full w-full max-w-2xl mx-auto flex-col">
       <div className="flex-1 min-h-0 overflow-hidden">
         <Conversation className="h-full">
           <ConversationContent className="px-4 sm:px-6 py-8">
-            {messages.length === 0 ? (
-              connected ? (
-                <ConversationEmptyState
-                  title="What can I help you with?"
-                  description="Ask me anything. I'm here to assist."
-                />
-              ) : error ? (
-                <ConversationEmptyState
-                  title="Connection Issue"
-                  description="Check the error below and try again."
-                />
-              ) : (
-                <ConversationEmptyState
-                  title={status === 'connecting' ? 'Connecting…' : 'Stand by…'}
-                  description="Warming up the gateway."
-                >
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span className="text-sm">
-                      {status === 'connecting'
-                        ? 'Negotiating secure channel'
-                        : 'Waiting for gateway'}
-                    </span>
-                  </div>
-                </ConversationEmptyState>
-              )
-            ) : (
-              messages.map(message => {
-                const isThinking =
-                  message.role === 'assistant' &&
-                  message.status === 'streaming' &&
-                  !message.content;
+            {messages.map(message => {
+              const isThinking =
+                message.role === 'assistant' &&
+                message.status === 'streaming' &&
+                !message.content;
 
-                return (
-                  <Message key={message.id} from={message.role}>
-                    <MessageContent>
-                      {isThinking ? (
-                        <div className="inline-flex items-center gap-1.5 text-muted-foreground leading-none py-1 overflow-visible">
-                          <span className="sr-only">Thinking</span>
-                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
-                        </div>
-                      ) : (
-                        <>
-                          {message.content && (
-                            <MessageResponse>{message.content}</MessageResponse>
-                          )}
-                        </>
-                      )}
-                    </MessageContent>
-                  </Message>
-                );
-              })
-            )}
+              return (
+                <Message key={message.id} from={message.role}>
+                  <MessageContent>
+                    {isThinking ? (
+                      <div className="inline-flex items-center gap-1.5 text-muted-foreground leading-none py-1 overflow-visible">
+                        <span className="sr-only">Thinking</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
+                      </div>
+                    ) : (
+                      <>
+                        {message.content && (
+                          <MessageResponse>{message.content}</MessageResponse>
+                        )}
+                      </>
+                    )}
+                  </MessageContent>
+                </Message>
+              );
+            })}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
       </div>
       <QueuePill queue={queue} onRemove={removeFromQueue} />
       <div className="shrink-0  backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
-        {error && (
+        {/* {error && (
           <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="relative overflow-hidden rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/5 via-background to-background p-4 shadow-lg shadow-destructive/5">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-destructive/10 via-transparent to-transparent" />
@@ -377,10 +391,10 @@ export default function AppHome() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
         <PromptInput
           onSubmit={({ text }) => sendMessage(text)}
-          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated-blur **:data-[slot=input-group]:shadow-fancy"
+          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy **:data-[slot=input-group]:dark:shadow-none"
         >
           <PromptInputBody>
             <PromptInputTextarea
@@ -394,7 +408,7 @@ export default function AppHome() {
               className="bg-transparent placeholder:text-muted-foreground/60"
             />
           </PromptInputBody>
-          <PromptInputFooter className="items-center">
+          <PromptInputFooter className="items-center p-1.5!">
             <PromptInputSubmit
               status={submitStatus}
               disabled={!resolvedChatConfig.gatewayUrl}
