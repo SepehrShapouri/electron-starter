@@ -34,6 +34,7 @@ import {
 import { QueuePill } from '../components/app/queue-pill';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
+import { BarsSpinner } from '@/components/bars-spinner';
 export default function AppHome() {
   const { provisionQuery, chatConfig } = useGatewayProvision();
 
@@ -278,7 +279,7 @@ export default function AppHome() {
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <Loader2 className="text-muted-foreground size-10 animate-spin" />
+            <BarsSpinner size={32} />
           </EmptyMedia>
           <EmptyTitle>Waking up your lobster</EmptyTitle>
         </EmptyHeader>
@@ -324,74 +325,6 @@ export default function AppHome() {
       </div>
       <QueuePill queue={queue} onRemove={removeFromQueue} />
       <div className="shrink-0  backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
-        {/* {error && (
-          <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="relative overflow-hidden rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/5 via-background to-background p-4 shadow-lg shadow-destructive/5">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-destructive/10 via-transparent to-transparent" />
-              <div className="relative flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-destructive/20">
-                  {status === 'connecting' ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-destructive" />
-                  ) : error.toLowerCase().includes('network') ||
-                    error.toLowerCase().includes('offline') ? (
-                    <WifiOff className="h-5 w-5 text-destructive" />
-                  ) : error.toLowerCase().includes('refused') ||
-                    error.toLowerCase().includes('unreachable') ? (
-                    <Unplug className="h-5 w-5 text-destructive" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-1 pt-0.5">
-                  <h4 className="text-sm font-medium text-foreground">
-                    {status === 'connecting'
-                      ? 'Connection in Progress'
-                      : error.toLowerCase().includes('timeout')
-                        ? 'Connection Timed Out'
-                        : error.toLowerCase().includes('refused')
-                          ? 'Gateway Unreachable'
-                          : 'Connection Failed'}
-                  </h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {error}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="iconSm"
-                  className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-                  onClick={reconnect}
-                  aria-label="Dismiss error"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="relative mt-3 flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 border-destructive/20 bg-background/50 hover:bg-destructive/5 hover:border-destructive/30"
-                  onClick={reconnect}
-                  disabled={status === 'connecting'}
-                >
-                  {status === 'connecting' ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  )}
-                  {status === 'connecting' ? 'Reconnecting...' : 'Try Again'}
-                </Button>
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/40" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive/60" />
-                  </span>
-                  Disconnected
-                </span>
-              </div>
-            </div>
-          </div>
-        )} */}
         <PromptInput
           onSubmit={({ text }) => sendMessage(text)}
           className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy **:data-[slot=input-group]:dark:shadow-none"

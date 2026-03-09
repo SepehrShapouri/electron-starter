@@ -28,10 +28,7 @@ export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
     if (!profile?.gatewayUrl) {
       return null;
     }
-return {
-      gatewayUrl:'ws://127.0.0.1:18789',
-      token:'ad09b52149c8b5c48b133a9761a0aa7682093cf1ecdf4c10'
-    }
+    
     return {
       gatewayUrl: profile.gatewayUrl.trim(),
       token: profile.gatewayToken || undefined,
