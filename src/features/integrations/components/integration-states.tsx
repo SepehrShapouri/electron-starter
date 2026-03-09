@@ -6,6 +6,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Loader2, RefreshCw, Search } from 'lucide-react';
 
 export function IntegrationErrorState({
@@ -55,25 +63,22 @@ export function IntegrationSearchEmptyState({
   onClear: () => void;
 }) {
   return (
-    <Card className="gap-4 py-6">
-      <CardHeader className="px-6">
-        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Search
-            className="h-4 w-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </div>
-        <CardTitle className="text-base">No matching integrations</CardTitle>
-        <CardDescription>
+    <Empty className="rounded-xl border bg-card py-8">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Search className="h-4 w-4" aria-hidden="true" />
+        </EmptyMedia>
+        <EmptyTitle>No matching integrations</EmptyTitle>
+        <EmptyDescription>
           No integrations matched &quot;{query}&quot;. Try another service,
           capability, or keyword.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-6">
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
         <Button type="button" variant="outline" onClick={onClear}>
           Clear search
         </Button>
-      </CardContent>
-    </Card>
+      </EmptyContent>
+    </Empty>
   );
 }

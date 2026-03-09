@@ -1,10 +1,5 @@
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-  InputGroupText,
-} from '@/components/ui/input-group';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { IntegrationCard } from '@/features/integrations/components/integration-card';
 import { IntegrationDetailsSheet } from '@/features/integrations/components/integration-details-sheet';
 import {
@@ -18,7 +13,6 @@ import {
 } from '@/features/integrations/constants';
 import {
   matchesIntegrationSearch,
-  normalizeSearchText,
   resolveStatuses,
 } from '@/features/integrations/utils';
 import { integrationsApi } from '@/lib/integrations-api';
@@ -83,13 +77,7 @@ export default function IntegrationsPage() {
   );
 
   const selectedAccounts = selectedId ? (byToolkit[selectedId] ?? []) : [];
-  const normalizedSearchQuery = normalizeSearchText(searchQuery);
-  const hasSearchQuery = normalizedSearchQuery.length > 0;
-  const resultCountLabel = hasSearchQuery
-    ? `${filteredIntegrations.length} result${
-        filteredIntegrations.length === 1 ? '' : 's'
-      } for "${searchQuery.trim()}"`
-    : `${integrations.length} integrations available`;
+  const hasSearchQuery = searchQuery.trim().length > 0;
 
   // Page entrance animation
   useEffect(() => {
@@ -140,6 +128,11 @@ export default function IntegrationsPage() {
     if (!open) setSelectedId(null);
   };
 
+  const clearSearch = () => {
+    setSearchQuery('');
+    document.getElementById(searchInputId)?.focus();
+  };
+
   return (
     <div
       ref={containerRef}
@@ -168,39 +161,36 @@ export default function IntegrationsPage() {
           <label htmlFor={searchInputId} className="sr-only">
             Search integrations
           </label>
-          <InputGroup className="h-11 rounded-xl bg-floated">
-            <InputGroupAddon>
-              <InputGroupText>
-                <Search className="h-4 w-4" aria-hidden="true" />
-              </InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
               id={searchInputId}
-              type="search"
+              type="text"
+              role="searchbox"
               value={searchQuery}
               onChange={event => setSearchQuery(event.target.value)}
               placeholder="Search integrations, tools, or capabilities"
               autoComplete="off"
               spellCheck={false}
               aria-label="Search integrations"
-              className="h-11"
+              className="h-10 bg-floated pl-9 pr-10"
             />
             {hasSearchQuery ? (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Clear search"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </InputGroupButton>
-              </InputGroupAddon>
+              <Button
+                type="button"
+                variant="ghost"
+                size="iconSm"
+                aria-label="Clear search"
+                className="absolute top-1/2 right-1 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+                onClick={clearSearch}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
             ) : null}
-          </InputGroup>
-          <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">
-            {resultCountLabel}
-          </p>
+          </div>
         </div>
       </header>
 
