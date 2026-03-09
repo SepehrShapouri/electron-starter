@@ -3,18 +3,22 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
 import {
+  getMessageText,
   normalizeChatMessage,
   type GatewayChatMessage,
-  type GatewayChatMessagePart,
   type GatewayQueueItem,
 } from '@/lib/gateway/chat';
 import type { GatewayConnectionConfig } from '@/lib/gateway/config';
 import { getGatewaySessionManager } from '@/lib/gateway/session-manager';
 import { useGatewayStore } from '@/lib/gateway/store';
 
-export type ChatMessage = GatewayChatMessage;
+export type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  status?: 'streaming' | 'final' | 'error';
+};
 export type QueueItem = GatewayQueueItem;
-export type ChatMessagePart = GatewayChatMessagePart;
 
 export type GatewayChatStatus =
   | 'idle'
@@ -38,7 +42,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
   const resolvedSessionKey = useGatewayStore(
     state => state.chat.resolvedSessionKey
   );
-  const messages = useGatewayStore(
+  const structuredMessages = useGatewayStore(
     state =>
       state.chat.messagesBySession[state.chat.resolvedSessionKey] ??
       EMPTY_CHAT_MESSAGES
@@ -55,6 +59,20 @@ export function useGatewayChat(config: GatewayChatConfig) {
   const historyLoaded = useGatewayStore(
     state =>
       state.chat.historyLoadedBySession[state.chat.resolvedSessionKey] ?? false
+  );
+  const messages = useMemo(
+    () =>
+      structuredMessages
+        .map(message => ({
+          id: message.id,
+          role: message.role,
+          content: getMessageText(message),
+          status: message.status,
+        }))
+        .filter(
+          message => Boolean(message.content) || message.status === 'streaming'
+        ),
+    [structuredMessages]
   );
 
   useEffect(() => {
@@ -85,7 +103,12 @@ export function useGatewayChat(config: GatewayChatConfig) {
       );
 
       const nextMessages = (payload.messages ?? [])
-        .map(message => normalizeChatMessage(message, resolvedSessionKey))
+        .map((message, index) =>
+          normalizeChatMessage(message, resolvedSessionKey, {
+            fallbackMessageId: `${resolvedSessionKey}:history:${index}`,
+            fallbackCreatedAt: index,
+          })
+        )
         .filter((message): message is GatewayChatMessage => Boolean(message));
 
       actions.hydrateChatHistory(resolvedSessionKey, nextMessages);

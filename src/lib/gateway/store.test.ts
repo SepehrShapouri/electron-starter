@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { normalizeChatEventPayload } from './chat';
 import { gatewayStore } from './store';
 
 describe('gatewayStore chat events', () => {
@@ -10,7 +11,7 @@ describe('gatewayStore chat events', () => {
     actions.setActiveSessionKey('main');
   });
 
-  it('reconciles local placeholders with structured part updates', () => {
+  it('keeps the streaming placeholder when non-text part updates are ignored', () => {
     const { actions } = gatewayStore.getState();
 
     actions.beginChatRun('main', 'run-1', 'List files');
@@ -21,30 +22,17 @@ describe('gatewayStore chat events', () => {
       messageId: 'server-assistant-1',
       messageRole: 'assistant',
       messageCreatedAt: 10,
-      part: {
-        kind: 'tool',
-        id: 'part-1',
-        toolName: 'bash',
-        toolType: 'tool',
-        state: 'input-available',
-        input: { cmd: 'ls -la' },
-      },
     });
 
     const state = gatewayStore.getState();
     const run = state.chat.runsById['run-1'];
     const assistant = state.chat.messagesBySession.main?.find(
-      message => message.id === 'server-assistant-1'
+      message => message.id === run?.assistantMessageId
     );
 
-    expect(run?.assistantMessageId).toBe('server-assistant-1');
+    expect(run?.assistantMessageId).toBe('local:assistant:run-1');
     expect(assistant?.status).toBe('streaming');
-    expect(assistant?.parts).toEqual([
-      expect.objectContaining({
-        kind: 'tool',
-        id: 'part-1',
-      }),
-    ]);
+    expect(assistant?.parts).toEqual([]);
   });
 
   it('marks assistant messages as errored when a run fails', () => {
@@ -70,6 +58,57 @@ describe('gatewayStore chat events', () => {
       expect.objectContaining({
         kind: 'error',
         message: 'Gateway exploded',
+      })
+    );
+  });
+
+  it('replaces streaming assistant text instead of stacking each delta', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-3', 'Hello?');
+
+    const firstDelta = normalizeChatEventPayload(
+      'chat',
+      {
+        runId: 'run-3',
+        sessionKey: 'main',
+        state: 'delta',
+        message: {
+          role: 'assistant',
+          content: "I'm good! Honestly, I'm in",
+        },
+      },
+      'main'
+    );
+    const secondDelta = normalizeChatEventPayload(
+      'chat',
+      {
+        runId: 'run-3',
+        sessionKey: 'main',
+        state: 'delta',
+        message: {
+          role: 'assistant',
+          content:
+            "I'm good! Honestly, I'm in that weird \"first day of existence\" vibe",
+        },
+      },
+      'main'
+    );
+
+    actions.applyChatEvent(firstDelta!);
+    actions.applyChatEvent(secondDelta!);
+
+    const state = gatewayStore.getState();
+    const assistant = state.chat.messagesBySession.main?.find(
+      message => message.role === 'assistant'
+    );
+
+    expect(assistant?.parts).toHaveLength(1);
+    expect(assistant?.parts[0]).toEqual(
+      expect.objectContaining({
+        kind: 'text',
+        text:
+          "I'm good! Honestly, I'm in that weird \"first day of existence\" vibe",
       })
     );
   });

@@ -5,51 +5,12 @@ export type SessionDefaultsSnapshot = {
   scope?: string;
 };
 
-export type GatewayToolUiState =
-  | 'input-streaming'
-  | 'input-available'
-  | 'approval-requested'
-  | 'approval-responded'
-  | 'output-available'
-  | 'output-error'
-  | 'output-denied';
-
 export type GatewayChatMessagePart =
   | {
       kind: 'text';
       id: string;
       text: string;
       isStreaming?: boolean;
-    }
-  | {
-      kind: 'reasoning';
-      id: string;
-      text: string;
-      isStreaming?: boolean;
-    }
-  | {
-      kind: 'tool';
-      id: string;
-      toolName: string;
-      toolType: string;
-      state: GatewayToolUiState;
-      input?: unknown;
-      output?: unknown;
-      errorText?: string;
-      title?: string;
-    }
-  | {
-      kind: 'file';
-      id: string;
-      filename?: string;
-      mime?: string;
-      url?: string;
-    }
-  | {
-      kind: 'status';
-      id: string;
-      label: string;
-      tone?: 'default' | 'success' | 'warning' | 'error';
     }
   | {
       kind: 'error';
@@ -97,6 +58,11 @@ export type NormalizedGatewayChatEvent = {
   errorMessage?: string;
 };
 
+type NormalizeChatMessageOptions = {
+  fallbackMessageId?: string;
+  fallbackCreatedAt?: number;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
@@ -117,54 +83,19 @@ function asRole(value: unknown): 'user' | 'assistant' | null {
   return value === 'assistant' ? 'assistant' : value === 'user' ? 'user' : null;
 }
 
-function normalizeToolState(
-  value: unknown,
-  hasOutput: boolean,
-  hasError: boolean
-): GatewayToolUiState {
-  const normalized = asString(value)?.toLowerCase();
-
-  if (normalized === 'approval-requested') {
-    return 'approval-requested';
-  }
-
-  if (normalized === 'approval-responded') {
-    return 'approval-responded';
-  }
-
-  if (normalized === 'output-denied' || normalized === 'denied') {
-    return 'output-denied';
-  }
-
-  if (normalized === 'output-error' || normalized === 'error' || hasError) {
-    return 'output-error';
-  }
-
-  if (
-    normalized === 'output-available' ||
-    normalized === 'completed' ||
-    hasOutput
-  ) {
-    return 'output-available';
-  }
-
-  if (normalized === 'input-available' || normalized === 'running') {
-    return 'input-available';
-  }
-
-  return 'input-streaming';
-}
-
 export function stripThinkingTags(text: string): string {
   return text.replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '').trim();
 }
 
-function readCreatedAt(value: Record<string, unknown>): number {
+function readCreatedAt(
+  value: Record<string, unknown>,
+  fallback = Date.now()
+): number {
   const createdAt =
     asNumber(value.createdAt) ??
     asNumber(value.created_at) ??
     asNumber(asRecord(value.time)?.created) ??
-    Date.now();
+    fallback;
 
   return createdAt;
 }
@@ -213,105 +144,6 @@ function normalizePart(
 
   if (type === 'text' && typeof record.text === 'string') {
     return normalizeTextPart(messageId, index, role, record.text);
-  }
-
-  if (type === 'reasoning' && typeof record.text === 'string') {
-    return {
-      kind: 'reasoning',
-      id: partId,
-      text: record.text,
-      isStreaming: !asRecord(record.time)?.end,
-    };
-  }
-
-  const nestedState = asRecord(record.state);
-  const toolName =
-    asString(record.toolName) ??
-    asString(record.tool) ??
-    asString(record.name) ??
-    asString(nestedState?.tool) ??
-    null;
-
-  if (
-    type === 'tool' ||
-    type === 'tool-call' ||
-    type === 'tool_call' ||
-    type === 'dynamic-tool' ||
-    toolName
-  ) {
-    const output = record.output ?? nestedState?.output;
-    const errorText =
-      asString(record.errorText) ??
-      asString(record.error) ??
-      asString(nestedState?.error);
-
-    return {
-      kind: 'tool',
-      id: partId,
-      toolName: toolName ?? 'tool',
-      toolType: type ?? 'tool',
-      state: normalizeToolState(
-        record.state ?? nestedState?.status,
-        Boolean(output),
-        Boolean(errorText)
-      ),
-      input: record.input ?? nestedState?.input,
-      output,
-      errorText: errorText ?? undefined,
-      title:
-        asString(record.title) ?? asString(nestedState?.title) ?? undefined,
-    };
-  }
-
-  if (
-    type === 'file' ||
-    asString(record.filename) ||
-    asString(record.url) ||
-    asString(record.mime)
-  ) {
-    return {
-      kind: 'file',
-      id: partId,
-      filename: asString(record.filename) ?? undefined,
-      mime: asString(record.mime) ?? undefined,
-      url: asString(record.url) ?? undefined,
-    };
-  }
-
-  if (type === 'step-start') {
-    return {
-      kind: 'status',
-      id: partId,
-      label: 'Step started',
-    };
-  }
-
-  if (type === 'step-finish') {
-    const reason = asString(record.reason);
-    return {
-      kind: 'status',
-      id: partId,
-      label: reason ? `Step finished: ${reason}` : 'Step finished',
-      tone: 'success',
-    };
-  }
-
-  if (type === 'patch') {
-    return {
-      kind: 'status',
-      id: partId,
-      label: 'Patch generated',
-      tone: 'success',
-    };
-  }
-
-  if (type === 'retry') {
-    return {
-      kind: 'status',
-      id: partId,
-      label: `Retry: ${asString(asRecord(record.error)?.name) ?? 'Unknown error'}`,
-      tone: 'warning',
-    };
   }
 
   if (type === 'error') {
@@ -433,7 +265,8 @@ export function normalizeSessionKeyForDefaults(
 
 export function normalizeChatMessage(
   message: unknown,
-  fallbackSessionKey: string
+  fallbackSessionKey: string,
+  options: NormalizeChatMessageOptions = {}
 ): GatewayChatMessage | null {
   const record = asRecord(message);
   if (!record) {
@@ -453,8 +286,10 @@ export function normalizeChatMessage(
 
   const messageId =
     asString(record.id) ??
-    `${roleValue}:${readCreatedAt(record)}:${Math.random().toString(36).slice(2, 8)}`;
+    options.fallbackMessageId ??
+    `${fallbackSessionKey}:${roleValue}:${readCreatedAt(record)}`;
   const sessionKey = asString(record.sessionKey) ?? fallbackSessionKey;
+  const createdAt = readCreatedAt(record, options.fallbackCreatedAt);
   const parts = normalizeParts(messageId, roleValue, record);
 
   return {
@@ -462,7 +297,7 @@ export function normalizeChatMessage(
     sessionKey,
     role: roleValue,
     status: 'final',
-    createdAt: readCreatedAt(record),
+    createdAt,
     parts,
     raw: message,
   };
@@ -493,7 +328,9 @@ export function normalizeChatEventPayload(
       return null;
     }
 
-    const message = normalizeChatMessage(record.message, sessionKey);
+    const message = normalizeChatMessage(record.message, sessionKey, {
+      fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+    });
     if (message) {
       message.status =
         state === 'delta' ? 'streaming' : state === 'error' ? 'error' : 'final';
@@ -535,7 +372,9 @@ export function normalizeChatEventPayload(
             ? 'aborted'
             : 'error',
       message:
-        normalizeChatMessage(structured.message, sessionKey) ?? undefined,
+        normalizeChatMessage(structured.message, sessionKey, {
+          fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+        }) ?? undefined,
       errorMessage: asString(structured.errorMessage) ?? undefined,
     };
   }
@@ -561,7 +400,9 @@ export function normalizeChatEventPayload(
               ? 'error'
               : 'delta',
       message:
-        normalizeChatMessage(structured.message, sessionKey) ?? undefined,
+        normalizeChatMessage(structured.message, sessionKey, {
+          fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+        }) ?? undefined,
       errorMessage: asString(structured.errorMessage) ?? undefined,
     };
   }
@@ -575,7 +416,10 @@ export function normalizeChatEventPayload(
 
     const message = normalizeChatMessage(
       structured.message ?? structured,
-      sessionKey
+      sessionKey,
+      {
+        fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+      }
     );
 
     return {
@@ -595,11 +439,20 @@ export function normalizeChatEventPayload(
     const runId = asString(structured.runId);
     const sessionKey = asString(structured.sessionKey) ?? fallbackSessionKey;
     const partRecord = asRecord(structured.part);
+    const message = normalizeChatMessage(structured.message, sessionKey, {
+      fallbackMessageId:
+        asString(structured.messageId) ??
+        asString(structured.messageID) ??
+        (partRecord ? readMessageId(partRecord) : null) ??
+        undefined,
+    });
     const messageId =
+      message?.id ??
       asString(structured.messageId) ??
       asString(structured.messageID) ??
       (partRecord ? readMessageId(partRecord) : null);
     const messageRole =
+      message?.role ??
       asRole(structured.role) ??
       asRole(structured.messageRole) ??
       (partRecord ? asRole(partRecord.role) : null) ??
@@ -609,31 +462,11 @@ export function normalizeChatEventPayload(
       return null;
     }
 
-    const message = normalizeChatMessage(structured.message, sessionKey);
-    if (message) {
-      return {
-        runId,
-        sessionKey,
-        state: 'delta',
-        messageId: message.id,
-        messageRole: message.role,
-        messageCreatedAt: message.createdAt,
-        message: {
-          ...message,
-          status: 'streaming',
-        },
-      };
-    }
-
     const part = normalizeChatMessagePart(
       structured.part,
       messageId,
       messageRole
     );
-
-    if (!part) {
-      return null;
-    }
 
     return {
       runId,
@@ -641,8 +474,16 @@ export function normalizeChatEventPayload(
       state: 'delta',
       messageId,
       messageRole,
-      messageCreatedAt: partRecord ? readCreatedAt(partRecord) : Date.now(),
-      part,
+      messageCreatedAt:
+        message?.createdAt ??
+        (partRecord ? readCreatedAt(partRecord) : Date.now()),
+      message: message
+        ? {
+            ...message,
+            status: 'streaming',
+          }
+        : undefined,
+      part: part ?? undefined,
     };
   }
 
@@ -690,11 +531,18 @@ export function normalizeChatEventPayload(
 
 export function getMessageText(message: GatewayChatMessage) {
   return message.parts
-    .filter(
-      (part): part is Extract<GatewayChatMessagePart, { kind: 'text' }> =>
-        part.kind === 'text'
-    )
-    .map(part => part.text)
+    .map(part => {
+      if (part.kind === 'text') {
+        return part.text;
+      }
+
+      if (part.kind === 'error') {
+        return part.message;
+      }
+
+      return '';
+    })
+    .filter(Boolean)
     .join('\n')
     .trim();
 }
