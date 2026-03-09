@@ -7,15 +7,9 @@ import './index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { authApi } from '@/lib/auth-api';
 import { setAuthToken } from '@/lib/axios';
-import { useGatewayLifecycleToasts } from '@/lib/use-gateway-lifecycle-toasts';
 import { Toaster } from 'sileo';
 import { router } from './utils/routes';
 const queryClient = new QueryClient();
-
-function GatewayLifecycleBridge() {
-  useGatewayLifecycleToasts();
-  return null;
-}
 
 type DeepLinkRoute =
   | '/app'
@@ -184,7 +178,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <GatewayLifecycleBridge />
           <Toaster
             options={{ fill: 'black', styles: { description: 'text-white' } }}
             position="top-center"
