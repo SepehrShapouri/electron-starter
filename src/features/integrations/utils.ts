@@ -4,6 +4,33 @@ import type { IntegrationStatus, StaticIntegration } from './constants';
 export const normalizeToolkit = (value: string): string =>
   value.trim().toLowerCase();
 
+export const normalizeSearchText = (value: string): string =>
+  value.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+export const matchesIntegrationSearch = (
+  integration: StaticIntegration,
+  query: string
+): boolean => {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const searchIndex = normalizeSearchText(
+    [
+      integration.name,
+      integration.description,
+      integration.longDescription,
+      integration.toolkit,
+      ...(integration.toolkitAliases ?? []),
+      ...integration.features,
+    ].join(' ')
+  );
+
+  return normalizedQuery.split(' ').every(term => searchIndex.includes(term));
+};
+
 export const resolveStatuses = (
   accounts: ComposioAccount[],
   integrations: StaticIntegration[]
