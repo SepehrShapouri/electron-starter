@@ -28,7 +28,9 @@
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": [
-    "src"
+    "src",
+    "tests/setup.ts",
+    "tests/unit"
   ],
   "exclude": [
     "src/components/ui/calendar.tsx",

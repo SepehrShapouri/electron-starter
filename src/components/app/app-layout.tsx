@@ -14,6 +14,8 @@ import { Outlet } from '@tanstack/react-router';
 import { NavUser } from '../nav-user';
 import { AppSidebar } from '../ui/app-sidebar';
 import { Badge } from '../ui/badge';
+import { Loader, Loader2 } from 'lucide-react';
+import { BarsSpinner } from '../bars-spinner';
 
 export default function AppLayout() {
   return (
@@ -37,6 +39,10 @@ export const SidebarHeader = () => {
   const { open } = useSidebar();
   const isFullscreen = useFullscreen();
   const connection = useGatewayConnection();
+  const reconnectingStatus =
+    connection.status === 'reconnecting' ||
+    connection.status === 'connecting' ||
+    connection.status === 'authenticating';
   const badge: {
     variant: React.ComponentProps<typeof Badge>['variant'];
     label: string;
@@ -84,7 +90,12 @@ export const SidebarHeader = () => {
 
         <div className="flex items-center gap-2">
           <Badge size="lg" variant={badge.variant}>
-            <IconDot className="size-4" /> {badge.label}
+            {reconnectingStatus ? (
+              <BarsSpinner size={16} />
+            ) : (
+              <IconDot className="size-4" />
+            )}{' '}
+            {badge.label}
           </Badge>
           <NavUser />
         </div>
