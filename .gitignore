@@ -108,3 +108,4 @@ makers/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.claude

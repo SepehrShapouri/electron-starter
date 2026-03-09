@@ -10,7 +10,7 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -86,6 +86,7 @@ export default function AppHome() {
     removeFromQueue,
     abort,
     loadHistory,
+    historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
 
   const reconnect = () => {
@@ -101,12 +102,13 @@ export default function AppHome() {
     }
   }, [resolvedChatConfig.gatewayUrl, connected, status, connect]);
 
-  const historyLoadedRef = useRef(false);
   useEffect(() => {
-    if (!connected || historyLoadedRef.current) return;
-    historyLoadedRef.current = true;
-    loadHistory();
-  }, [connected, loadHistory]);
+    if (!connected || historyLoaded) {
+      return;
+    }
+
+    void loadHistory();
+  }, [connected, historyLoaded, loadHistory]);
 
   if (!profile && provisionQuery.isLoading) {
     return (
@@ -382,14 +384,20 @@ export default function AppHome() {
         >
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder={connected ? 'Message your assistant' : 'Clawing…'}
+              placeholder={
+                resolvedChatConfig.gatewayUrl
+                  ? connected
+                    ? 'Message your assistant'
+                    : 'Message now. It will send when reconnected.'
+                  : 'Clawing…'
+              }
               className="bg-transparent placeholder:text-muted-foreground/60"
             />
           </PromptInputBody>
           <PromptInputFooter className="items-center">
             <PromptInputSubmit
               status={submitStatus}
-              disabled={!connected}
+              disabled={!resolvedChatConfig.gatewayUrl}
               onStop={abort}
               className="ml-auto"
             />

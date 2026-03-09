@@ -1,10 +1,7 @@
-import { GatewayClient, type GatewayHelloOk } from './gateway-client';
+import type { GatewayConnectionConfig } from '@/lib/gateway/config';
+import { withGatewayRequestClient } from '@/lib/gateway/request-client';
 
-export type GatewayConnectionConfig = {
-  gatewayUrl: string;
-  token?: string;
-  password?: string;
-};
+export type { GatewayConnectionConfig } from '@/lib/gateway/config';
 
 export type AgentFileName = string;
 export type GatewayAgentFileListEntry = {
@@ -13,13 +10,11 @@ export type GatewayAgentFileListEntry = {
   missing: boolean;
 };
 
-const GATEWAY_WS_PORT = '18789';
-
 export async function listGatewayAgentFiles(
   config: GatewayConnectionConfig,
   params: { agentId: 'main' }
 ): Promise<GatewayAgentFileListEntry[]> {
-  return withGatewayClient(config, async ({ client }) => {
+  return withGatewayRequestClient(config, async ({ client }) => {
     const payload = await client.request<unknown>('agents.files.list', {
       agentId: params.agentId,
     });
@@ -31,7 +26,7 @@ export async function getGatewayAgentFile(
   config: GatewayConnectionConfig,
   params: { agentId: 'main'; name: AgentFileName }
 ): Promise<string> {
-  return withGatewayClient(config, async ({ client }) => {
+  return withGatewayRequestClient(config, async ({ client }) => {
     const payload = await client.request<unknown>('agents.files.get', {
       agentId: params.agentId,
       name: params.name,
@@ -44,7 +39,7 @@ export async function setGatewayAgentFile(
   config: GatewayConnectionConfig,
   params: { agentId: 'main'; name: AgentFileName; content: string }
 ): Promise<void> {
-  await withGatewayClient(config, async ({ client }) => {
+  await withGatewayRequestClient(config, async ({ client }) => {
     await client.request('agents.files.set', {
       agentId: params.agentId,
       name: params.name,
@@ -125,80 +120,4 @@ function extractFilesPayload(payload: unknown): unknown[] | null {
   }
 
   return null;
-}
-
-function toGatewaySocketUrl(rawGatewayUrl: string): string {
-  const raw = rawGatewayUrl.trim();
-  if (!raw) {
-    throw new Error('Missing gateway URL');
-  }
-
-  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
-  const parsed = new URL(hasScheme ? raw : `ws://${raw}`);
-
-  if (parsed.protocol === 'http:') {
-    parsed.protocol = 'ws:';
-  } else if (parsed.protocol === 'https:') {
-    parsed.protocol = 'wss:';
-  } else if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
-    throw new Error(`Unsupported gateway URL protocol: ${parsed.protocol}`);
-  }
-
-  if (!parsed.port) {
-    parsed.port = GATEWAY_WS_PORT;
-  }
-
-  return parsed.toString();
-}
-
-async function withGatewayClient<T>(
-  config: GatewayConnectionConfig,
-  run: (context: { client: GatewayClient; hello: GatewayHelloOk }) => Promise<T>
-): Promise<T> {
-  let settled = false;
-
-  return new Promise<T>((resolve, reject) => {
-    const client = new GatewayClient({
-      url: toGatewaySocketUrl(config.gatewayUrl),
-      token: config.token?.trim() || undefined,
-      password: config.password?.trim() || undefined,
-      onHello: hello => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        void run({ client, hello })
-          .then(result => resolve(result))
-          .catch(error => reject(error))
-          .finally(() => {
-            client.disconnect();
-          });
-      },
-      onError: error => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        reject(error);
-      },
-      onClose: ({ reason }) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        reject(new Error(reason || 'Gateway disconnected'));
-      },
-    });
-
-    client.connect();
-
-    window.setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      client.disconnect();
-      reject(new Error('Timed out while connecting to gateway'));
-    }, 10000);
-  });
 }
