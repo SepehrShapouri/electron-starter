@@ -1,10 +1,7 @@
-import { GatewayClient, type GatewayHelloOk } from './gateway-client';
+import type { GatewayConnectionConfig } from '@/lib/gateway/config';
+import { withGatewayRequestClient } from '@/lib/gateway/request-client';
 
-export type GatewayConnectionConfig = {
-  gatewayUrl: string;
-  token?: string;
-  password?: string;
-};
+export type { GatewayConnectionConfig } from '@/lib/gateway/config';
 
 export type ChannelCardStatus = {
   id: string;
@@ -32,7 +29,6 @@ export type ChannelMutationResult = {
   restartScheduled: boolean;
 };
 
-const GATEWAY_WS_PORT = '18789';
 const CHANNEL_DESCRIPTIONS: Record<string, string> = {
   telegram: 'Connect your Telegram bot and start receiving DMs.',
   slack: 'Add your agent to Slack workspaces and channels.',
@@ -196,7 +192,7 @@ export async function getGatewayChannelsStatus(
   config: GatewayConnectionConfig,
   params?: { probe?: boolean; timeoutMs?: number }
 ): Promise<ChannelsStatusResult> {
-  return withGatewayClient(config, async ({ client }) => {
+  return withGatewayRequestClient(config, async ({ client }) => {
     const payload = await client.request('channels.status', {
       probe: params?.probe ?? false,
       timeoutMs: params?.timeoutMs,
@@ -214,7 +210,7 @@ export async function connectTelegramChannel(
     throw new Error('Bot token is required');
   }
 
-  return await withGatewayClient(config, async ({ client }) => {
+  return await withGatewayRequestClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
     if (!baseHash) {
@@ -246,7 +242,7 @@ export async function connectTelegramChannel(
 export async function disconnectTelegramChannel(
   config: GatewayConnectionConfig
 ): Promise<ChannelMutationResult> {
-  return await withGatewayClient(config, async ({ client }) => {
+  return await withGatewayRequestClient(config, async ({ client }) => {
     try {
       await client.request('channels.logout', {
         channel: 'telegram',
@@ -302,7 +298,7 @@ async function requestWhatsAppQrStart(
   config: GatewayConnectionConfig,
   params?: { force?: boolean; timeoutMs?: number; accountId?: string }
 ): Promise<WhatsAppQrStartResult> {
-  return await withGatewayClient(config, async ({ client }) => {
+  return await withGatewayRequestClient(config, async ({ client }) => {
     const result = await client.request<{
       message?: unknown;
       qrDataUrl?: unknown;
@@ -322,7 +318,7 @@ async function requestWhatsAppQrStart(
 async function ensureWhatsAppProviderEnabled(
   config: GatewayConnectionConfig
 ): Promise<void> {
-  await withGatewayClient(config, async ({ client }) => {
+  await withGatewayRequestClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
     if (!baseHash) {
@@ -351,7 +347,7 @@ async function waitForGatewayRecovery(
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      await withGatewayClient(config, async ({ client }) => {
+      await withGatewayRequestClient(config, async ({ client }) => {
         await client.request('channels.status', {
           probe: false,
           timeoutMs: 5000,
@@ -371,7 +367,7 @@ export async function waitForWhatsAppQrLogin(
   config: GatewayConnectionConfig,
   params?: { timeoutMs?: number; accountId?: string }
 ): Promise<WhatsAppQrWaitResult> {
-  return await withGatewayClient(config, async ({ client }) => {
+  return await withGatewayRequestClient(config, async ({ client }) => {
     const result = await client.request<{
       connected?: unknown;
       message?: unknown;
@@ -391,7 +387,7 @@ export async function disconnectWhatsAppChannel(
   config: GatewayConnectionConfig,
   params?: { accountId?: string }
 ): Promise<void> {
-  await withGatewayClient(config, async ({ client }) => {
+  await withGatewayRequestClient(config, async ({ client }) => {
     await client.request('channels.logout', {
       channel: 'whatsapp',
       accountId: params?.accountId ?? 'default',
@@ -406,7 +402,7 @@ export async function disconnectWhatsAppChannel(
 export async function restartGateway(
   config: GatewayConnectionConfig
 ): Promise<void> {
-  await withGatewayClient(config, async ({ client }) => {
+  await withGatewayRequestClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
     if (!baseHash) {
@@ -433,7 +429,7 @@ export async function allowGatewayControlUiOrigins(
     throw new Error('At least one allowed origin is required.');
   }
 
-  await withGatewayClient(config, async ({ client }) => {
+  await withGatewayRequestClient(config, async ({ client }) => {
     const snapshot = await client.request<ConfigSnapshot>('config.get', {});
     const baseHash = asString(snapshot?.hash);
     if (!baseHash) {
@@ -460,80 +456,4 @@ export async function allowGatewayControlUiOrigins(
 function isRestartScheduled(payload: unknown): boolean {
   const root = asRecord(payload);
   return Boolean(root?.restart && typeof root.restart === 'object');
-}
-
-function toGatewaySocketUrl(rawGatewayUrl: string): string {
-  const raw = rawGatewayUrl.trim();
-  if (!raw) {
-    throw new Error('Missing gateway URL');
-  }
-
-  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
-  const parsed = new URL(hasScheme ? raw : `ws://${raw}`);
-
-  if (parsed.protocol === 'http:') {
-    parsed.protocol = 'ws:';
-  } else if (parsed.protocol === 'https:') {
-    parsed.protocol = 'wss:';
-  } else if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
-    throw new Error(`Unsupported gateway URL protocol: ${parsed.protocol}`);
-  }
-
-  if (!parsed.port) {
-    parsed.port = GATEWAY_WS_PORT;
-  }
-
-  return parsed.toString();
-}
-
-async function withGatewayClient<T>(
-  config: GatewayConnectionConfig,
-  run: (context: { client: GatewayClient; hello: GatewayHelloOk }) => Promise<T>
-): Promise<T> {
-  let settled = false;
-
-  return new Promise<T>((resolve, reject) => {
-    const client = new GatewayClient({
-      url: toGatewaySocketUrl(config.gatewayUrl),
-      token: config.token?.trim() || undefined,
-      password: config.password?.trim() || undefined,
-      onHello: hello => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        void run({ client, hello })
-          .then(result => resolve(result))
-          .catch(error => reject(error))
-          .finally(() => {
-            client.disconnect();
-          });
-      },
-      onError: error => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        reject(error);
-      },
-      onClose: ({ reason }) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        reject(new Error(reason || 'Gateway disconnected'));
-      },
-    });
-
-    client.connect();
-
-    window.setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      client.disconnect();
-      reject(new Error('Timed out while connecting to gateway'));
-    }, 10000);
-  });
 }

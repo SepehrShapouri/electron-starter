@@ -1,8 +1,8 @@
-import IconBlocks from '@/components/icons/IconBlocks.svg';
 import IconBubble4 from '@/components/icons/IconBubble4.svg';
 import IconCalendarClock from '@/components/icons/IconCalendarClock.svg';
 import IconIntegrations from '@/components/icons/IconIntegrations.svg';
-import { useAppUpdate } from '@/hooks/use-app-update';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useAppUpdate } from '@/hooks/use-app-update';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { ArrowDownToLine, Loader2, Puzzle, Settings } from 'lucide-react';
 import * as React from 'react';
@@ -86,7 +85,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            {/* <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 tooltip="Skills"
@@ -98,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span>Skills</span>
                 </Link>
               </SidebarMenuButton>
-            </SidebarMenuItem>
+            </SidebarMenuItem> */}
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

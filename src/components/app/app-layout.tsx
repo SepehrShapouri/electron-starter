@@ -1,23 +1,27 @@
 import ClawpilotText from '@/components/icons/ClawpilotText.svg';
+import IconDot from '@/components/icons/IconDot.svg';
+import { GatewayRuntimeBridge } from '@/components/app/gateway-runtime-bridge';
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import IconDot from '@/components/icons/IconDot.svg';
 import { useFullscreen } from '@/hooks/use-fullscreen';
+import { useGatewayConnection } from '@/lib/gateway/store';
 import { cn } from '@/lib/utils';
 import { Outlet } from '@tanstack/react-router';
 import { NavUser } from '../nav-user';
 import { AppSidebar } from '../ui/app-sidebar';
 import { Badge } from '../ui/badge';
+
 export default function AppLayout() {
   return (
     <SidebarProvider
       className="h-screen flex min-h-0"
       style={{ '--sidebar-width': '16rem' } as React.CSSProperties}
     >
+      <GatewayRuntimeBridge />
       <AppSidebar />
       <SidebarInset className="overflow-hidden">
         <SidebarHeader />
@@ -32,6 +36,38 @@ export default function AppLayout() {
 export const SidebarHeader = () => {
   const { open } = useSidebar();
   const isFullscreen = useFullscreen();
+  const connection = useGatewayConnection();
+  const badge: {
+    variant: React.ComponentProps<typeof Badge>['variant'];
+    label: string;
+  } =
+    connection.status === 'ready'
+      ? {
+          variant: connection.stale ? 'secondaryWarning' : 'secondarySuccess',
+          label: connection.stale ? 'Degraded' : 'Connected',
+        }
+      : connection.status === 'degraded'
+        ? {
+            variant: 'secondaryWarning' as const,
+            label: 'Degraded',
+          }
+        : connection.status === 'reconnecting' ||
+            connection.status === 'connecting' ||
+            connection.status === 'authenticating'
+          ? {
+              variant: 'default' as const,
+              label: 'Reconnecting',
+            }
+          : connection.status === 'error'
+            ? {
+                variant: 'secondaryDestructive' as const,
+                label: 'Connection issue',
+              }
+            : {
+                variant: 'secondary' as const,
+                label: 'Disconnected',
+              };
+
   return (
     <header
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
@@ -47,8 +83,8 @@ export const SidebarHeader = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge size="lg" variant="secondarySuccess">
-            <IconDot className="size-4" /> Connected
+          <Badge size="lg" variant={badge.variant}>
+            <IconDot className="size-4" /> {badge.label}
           </Badge>
           <NavUser />
         </div>
