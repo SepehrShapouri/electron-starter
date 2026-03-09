@@ -196,6 +196,7 @@ export class GatewaySessionManager {
         gatewayStore.getState().actions.markGapDetected(info);
       },
       onClose: ({ reason }) => {
+        if (this.client !== client) return;
         this.client = null;
         this.hello = null;
         this.rejectReady(new Error(reason || 'Gateway disconnected'));
