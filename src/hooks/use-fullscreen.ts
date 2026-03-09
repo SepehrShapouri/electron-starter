@@ -7,7 +7,9 @@ export function useFullscreen() {
     if (typeof window === "undefined" || !window.electronAPI) return
 
     let cancelled = false
-    let cleanup: (() => void) | undefined
+    const cleanup = window.electronAPI.onFullscreenChange(value => {
+      if (!cancelled) setIsFullscreen(value)
+    })
 
     window.electronAPI
       .isFullscreen()
@@ -15,10 +17,6 @@ export function useFullscreen() {
         if (!cancelled) setIsFullscreen(value)
       })
       .catch(() => {})
-
-    cleanup = window.electronAPI.onFullscreenChange(value => {
-      if (!cancelled) setIsFullscreen(value)
-    })
 
     return () => {
       cancelled = true

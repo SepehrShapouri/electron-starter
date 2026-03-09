@@ -10,7 +10,7 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -23,6 +23,13 @@ import {
   MessageResponse,
 } from '../components/ai-elements/message';
 import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from '../components/ai-elements/tool';
+import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -30,8 +37,68 @@ import {
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
 import { QueuePill } from '../components/app/queue-pill';
+import type { ChatMessagePart } from '../lib/use-gateway-chat';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
+
+function renderMessagePart(part: ChatMessagePart) {
+  switch (part.kind) {
+    case 'text':
+      return <MessageResponse>{part.text}</MessageResponse>;
+    case 'reasoning':
+      return (
+        <details className="rounded-lg border border-border/70 bg-background/70 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Reasoning trace
+          </summary>
+          <div className="mt-2">
+            <MessageResponse>{part.text}</MessageResponse>
+          </div>
+        </details>
+      );
+    case 'tool':
+      return (
+        <Tool className="rounded-lg bg-background/70">
+          <ToolHeader
+            type="dynamic-tool"
+            toolName={part.toolName}
+            state={part.state}
+            title={part.title ?? part.toolName}
+          />
+          <ToolContent>
+            {part.input !== undefined ? (
+              <ToolInput input={part.input as never} />
+            ) : null}
+            <ToolOutput
+              output={part.output as never}
+              errorText={part.errorText as never}
+            />
+          </ToolContent>
+        </Tool>
+      );
+    case 'file':
+      return (
+        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-muted-foreground">
+          {part.filename ?? part.url ?? 'Attached file'}
+          {part.mime ? <div className="mt-1 text-xs">{part.mime}</div> : null}
+        </div>
+      );
+    case 'status':
+      return (
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {part.label}
+        </div>
+      );
+    case 'error':
+      return (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {part.message}
+        </div>
+      );
+    default:
+      return null;
+  }
+}
 
 export default function AppHome() {
   const { provisionQuery, chatConfig } = useGatewayProvision();
@@ -86,6 +153,7 @@ export default function AppHome() {
     removeFromQueue,
     abort,
     loadHistory,
+    historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
 
   const reconnect = () => {
@@ -101,12 +169,13 @@ export default function AppHome() {
     }
   }, [resolvedChatConfig.gatewayUrl, connected, status, connect]);
 
-  const historyLoadedRef = useRef(false);
   useEffect(() => {
-    if (!connected || historyLoadedRef.current) return;
-    historyLoadedRef.current = true;
-    loadHistory();
-  }, [connected, loadHistory]);
+    if (!connected || historyLoaded) {
+      return;
+    }
+
+    void loadHistory();
+  }, [connected, historyLoaded, loadHistory]);
 
   if (!profile && provisionQuery.isLoading) {
     return (
@@ -278,7 +347,7 @@ export default function AppHome() {
                 const isThinking =
                   message.role === 'assistant' &&
                   message.status === 'streaming' &&
-                  !message.content;
+                  message.parts.length === 0;
 
                 return (
                   <Message key={message.id} from={message.role}>
@@ -290,13 +359,13 @@ export default function AppHome() {
                           <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
                           <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
                         </div>
-                      ) : (
-                        <>
-                          {message.content && (
-                            <MessageResponse>{message.content}</MessageResponse>
-                          )}
-                        </>
-                      )}
+                      ) : message.parts.length > 0 ? (
+                        <div className="space-y-3">
+                          {message.parts.map(part => (
+                            <div key={part.id}>{renderMessagePart(part)}</div>
+                          ))}
+                        </div>
+                      ) : null}
                     </MessageContent>
                   </Message>
                 );
@@ -382,14 +451,20 @@ export default function AppHome() {
         >
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder={connected ? 'Message your assistant' : 'Clawing…'}
+              placeholder={
+                resolvedChatConfig.gatewayUrl
+                  ? connected
+                    ? 'Message your assistant'
+                    : 'Message now. It will send when reconnected.'
+                  : 'Clawing…'
+              }
               className="bg-transparent placeholder:text-muted-foreground/60"
             />
           </PromptInputBody>
           <PromptInputFooter className="items-center">
             <PromptInputSubmit
               status={submitStatus}
-              disabled={!connected}
+              disabled={!resolvedChatConfig.gatewayUrl}
               onStop={abort}
               className="ml-auto"
             />
