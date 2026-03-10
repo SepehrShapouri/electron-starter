@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from './card';
+import SettingsDialog from '@/features/settings/components/settings-dialog';
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = useRouterState({
     select: state => state.location.pathname,
@@ -137,19 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                tooltip="Settings"
-                className="h-9"
-                isActive={isSettingsActive}
-              >
-                <Link to="/app/settings">
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SettingsDialog />
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
