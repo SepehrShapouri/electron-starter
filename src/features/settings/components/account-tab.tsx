@@ -5,10 +5,11 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { sileo } from 'sileo';
 import { z } from 'zod';
+import { ChangePasswordForm } from './change-password-form';
 
 const accountFormSchema = z.object({
   name: z
@@ -20,6 +21,12 @@ const accountFormSchema = z.object({
 });
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
+type AccountView = 'profile' | 'password';
+
+type AuthAccount = {
+  provider?: string;
+  providerId?: string;
+};
 
 type AccountClient = typeof authClient & {
   updateUser: (input: { name: string }) => Promise<{
@@ -30,6 +37,10 @@ type AccountClient = typeof authClient & {
     callbackURL: string;
   }) => Promise<{
     error?: { message?: string } | null;
+  }>;
+  listAccounts: () => Promise<{
+    data?: AuthAccount[];
+    error?: { message?: string | null } | null;
   }>;
 };
 
@@ -45,12 +56,45 @@ const getEmailChangeCallbackUrl = () => {
   return `${window.location.origin}/app`;
 };
 
+const getCredentialAccounts = (accounts: AuthAccount[] | undefined) =>
+  (accounts ?? []).filter(account => {
+    const providerId = (account.providerId ?? account.provider ?? '').toLowerCase();
+    return providerId === 'credential' || providerId === 'email-password';
+  });
+
 export function AccountTab() {
   const queryClient = useQueryClient();
+  const [view, setView] = useState<AccountView>('profile');
+
   const { data, isLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => (await authClient.getSession()).data?.user,
   });
+
+  const {
+    data: accountRecords,
+    isLoading: isLoadingAccounts,
+    isError: accountRecordsError,
+  } = useQuery({
+    queryKey: ['auth-accounts'],
+    queryFn: async () => {
+      const result = await accountClient.listAccounts();
+      if (result.error) {
+        throw new Error(result.error.message || 'Unable to load linked accounts.');
+      }
+
+      return result.data ?? [];
+    },
+  });
+
+  const hasPasswordAccount = useMemo(() => {
+    if (accountRecordsError) {
+      return true;
+    }
+
+    return getCredentialAccounts(accountRecords).length > 0;
+  }, [accountRecords, accountRecordsError]);
+
   const {
     register,
     handleSubmit,
@@ -71,6 +115,12 @@ export function AccountTab() {
       email: data?.email ?? '',
     });
   }, [data?.email, data?.name, reset]);
+
+  useEffect(() => {
+    if (!hasPasswordAccount && view === 'password') {
+      setView('profile');
+    }
+  }, [hasPasswordAccount, view]);
 
   const saveMutation = useMutation({
     mutationFn: async (values: AccountFormValues) => {
@@ -146,6 +196,10 @@ export function AccountTab() {
     );
   }
 
+  if (view === 'password') {
+    return <ChangePasswordForm onBack={() => setView('profile')} />;
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -184,10 +238,20 @@ export function AccountTab() {
           <Label>Password</Label>
           <div className="flex gap-3">
             <Input placeholder="*********" type="password" disabled />
-            <Button variant="secondary" type="button" disabled>
-              Change
+            <Button
+              variant="secondary"
+              type="button"
+              disabled={!hasPasswordAccount || isLoadingAccounts}
+              onClick={() => setView('password')}
+            >
+              {isLoadingAccounts ? 'Loading...' : 'Change'}
             </Button>
           </div>
+          {!hasPasswordAccount && !isLoadingAccounts ? (
+            <p className="text-xs text-muted-foreground">
+              Password changes are unavailable for this sign-in method.
+            </p>
+          ) : null}
         </div>
         {errors.root?.message ? (
           <p className="text-sm text-red-9">{errors.root.message}</p>
