@@ -89,14 +89,6 @@ export function NavUser() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <BadgeCheck />
-            Account
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard />
-            Billing
-          </DropdownMenuItem>
           <ThemeToggle />
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
