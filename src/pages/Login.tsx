@@ -1,22 +1,21 @@
+import { LegalLinks } from '@/components/auth/legal-links';
+import Google from '@/components/icons/Google.svg';
+import IconScanTextSparkle from '@/components/icons/IconScanTextSparkle.svg';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { LegalLinks } from '@/components/auth/legal-links';
-import Clawpilot from '@/components/icons/Clawpilot.svg';
-import Google from '@/components/icons/Google.svg';
-import IconMagicWand2 from '@/components/icons/IconMagicWand2.svg';
+import { authApi } from '@/lib/auth-api';
+import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import gsap from 'gsap';
+import { Eye, EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import gsap from 'gsap';
-import { authApi } from '@/lib/auth-api';
-import { authClient } from '@/lib/auth-client';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -145,148 +144,158 @@ export default function Login() {
   };
 
   return (
-    <div ref={containerRef} className={cn('flex flex-col gap-6')}>
-      <button
-        onClick={() => navigateWithExit('/auth/welcome')}
-        className="flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
-        type="button"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back
-      </button>
-
-      <div className="flex flex-col gap-3">
-        <Clawpilot className="h-9 w-9 text-muted-foreground" />
-        <h1 className="text-2xl font-light tracking-tight text-foreground">
-          Welcome back.
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your clawpilot account.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-2">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="sr-only">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Email"
-              autoComplete="email"
-              aria-invalid={!!errors.email}
-              className="h-11"
-              autoFocus
-              {...register('email')}
-            />
-            {errors.email?.message && (
-              <p className="text-xs text-red-9">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <div className="relative">
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
-                autoComplete="current-password"
-                aria-invalid={!!errors.password}
-                className="h-11 pr-10"
-                {...register('password')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(show => !show)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            {errors.password?.message && (
-              <p className="text-xs text-red-9">{errors.password.message}</p>
-            )}
-          </div>
-
+    <div
+      ref={containerRef}
+      className={cn(
+        'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex gap-16'
+      )}
+    >
+      <div className="flex w-full flex-col justify-between h-full">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-medium text-muted-foreground">
+            Welcome back!
+          </p>
+          <p className="text-3xl font-medium text-foreground">
+            Sign in to your account
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
           {!!errors.root && (
             <Alert variant="secondaryDestructive">
               <AlertTitle>Something went wrong</AlertTitle>
               <AlertDescription>{errors.root.message}</AlertDescription>
             </Alert>
           )}
-
-          <Button
-            type="submit"
-            disabled={signInMutation.isPending}
-            className="h-11 w-full"
-          >
-            {signInMutation.isPending ? 'Signing in...' : 'Sign in'}
-          </Button>
+          <p className="text-sm font-medium text-foreground">
+            Don't have an account?{' '}
+            <Link
+              className="underline"
+              to="/auth/signup"
+              onClick={event => {
+                event.preventDefault();
+                navigateWithExit('/auth/signup');
+              }}
+            >
+              Sign up
+            </Link>
+          </p>
         </div>
-      </form>
-
-      <div className="my-2 flex items-center gap-6">
-        <Separator className="flex-1" />
-        <span className="text-sm text-muted-foreground">Or continue with</span>
-        <Separator className="flex-1" />
       </div>
+      <Separator orientation="vertical" />
+      <div className="flex w-full flex-col justify-between h-full">
+        <div className="flex w-full flex-col items-start gap-8">
+          <div className="flex flex-col gap-3 w-full">
+            <Button
+              type="button"
+              variant="outline"
+              size="xl"
+              className="w-full bg-transparent shadow-sm"
+              onClick={() => {
+                void handleGoogleSignIn();
+              }}
+              disabled={googleLoading}
+            >
+              <Google />
+              {googleLoading
+                ? 'Connecting to Google...'
+                : 'Continue with Google'}
+            </Button>
 
-      <div className="flex flex-col gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="xl"
-          className="w-full"
-          onClick={() => {
-            void handleGoogleSignIn();
-          }}
-          disabled={googleLoading}
-        >
-          <Google />
-          {googleLoading ? 'Connecting to Google...' : 'Continue with Google'}
-        </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xl"
+              className="w-full bg-transparent shadow-sm"
+              onClick={() => {
+                navigateWithExit('/auth/login-magic-link');
+              }}
+            >
+              <IconScanTextSparkle className="text-foreground" />
+              Get a Magic Link
+            </Button>
+          </div>
+          <div className="flex items-center gap-6 w-full">
+            <Separator className="flex-1" />
+            <span className="text-sm text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="w-full">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="email" className="sr-only">
+                  Email
+                </label>
+                <Input
+                  variant="soft"
+                  size="xl"
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  autoComplete="email"
+                  aria-invalid={!!errors.email}
+                  className="h-11"
+                  autoFocus
+                  {...register('email')}
+                />
+                {errors.email?.message && (
+                  <p className="text-xs text-red-9">{errors.email.message}</p>
+                )}
+              </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="xl"
-          className="w-full"
-          onClick={() => {
-            navigateWithExit('/auth/login-magic-link');
-          }}
-        >
-          <IconMagicWand2 />
-          Get a Magic Link
-        </Button>
+              <div className="flex flex-col gap-1.5">
+                <div className="relative">
+                  <label htmlFor="password" className="sr-only">
+                    Password
+                  </label>
+                  <Input
+                    size="xl"
+                    variant="soft"
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter password"
+                    autoComplete="current-password"
+                    aria-invalid={!!errors.password}
+                    className="h-11 pr-10"
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(show => !show)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={
+                      showPassword ? 'Hide password' : 'Show password'
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.password?.message && (
+                  <p className="text-xs text-red-9">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                size="xl"
+                disabled={signInMutation.isPending}
+                className="w-full"
+              >
+                {signInMutation.isPending ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </div>
+          </form>
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          By clicking continue, you agree to our{' '}
+          <LegalLinks className="text-muted-foreground" />.
+        </p>
       </div>
-
-      <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
-        <span>Don&apos;t have an account?</span>
-        <Link
-          to="/auth/signup"
-          onClick={event => {
-            event.preventDefault();
-            navigateWithExit('/auth/signup');
-          }}
-          className="text-foreground/80 transition-colors hover:text-foreground"
-        >
-          Sign up
-        </Link>
-      </div>
-
-      <p className="px-2 text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our <LegalLinks />.
-      </p>
     </div>
   );
 }

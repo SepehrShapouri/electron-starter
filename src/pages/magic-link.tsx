@@ -87,7 +87,12 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
 
   if (magicLinkSent) {
     return (
-      <div className={cn('flex flex-col gap-6')}>
+      <div
+      className={cn(
+        'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex items-center justify-center'
+      )}
+    >
+      <div className={cn('flex flex-col gap-6 max-w-[380px] w-full')}>
         <IconEmail1Sparkle className="h-10 w-10 text-muted-foreground" />
         <div className="space-y-2">
           <h1 className="text-2xl font-light tracking-tight text-foreground">
@@ -111,66 +116,73 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
           <Link to={backPath}>Back</Link>
         </Button>
       </div>
+      </div>
     );
   }
 
   return (
-    <div className={cn('flex flex-col gap-6')}>
-      <Link
-        to={backPath}
-        className="flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back
-      </Link>
+    <div
+      className={cn(
+        'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex items-center justify-center'
+      )}
+    >
+      <div className='flex flex-col gap-6 max-w-[380px] w-full'>
+        <Link
+          to={backPath}
+          className="flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </Link>
 
-      <div className="flex flex-col gap-3">
-        <Clawpilot className="h-9 w-9 text-muted-foreground" />
-        <h1 className="text-2xl font-light tracking-tight text-foreground">
-          Get a magic link.
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Enter your email and we will send you a sign-in link.
-        </p>
-      </div>
-
-      <form onSubmit={handleSendMagicLink} noValidate className="mt-2">
         <div className="flex flex-col gap-3">
-          <Input
-            type="email"
-            placeholder="Email"
-            autoComplete="email"
-            required
-            className="h-11"
-            value={email}
-            onChange={event => {
-              setEmail(event.target.value);
-            }}
-          />
-
-          {isSignUp ? (
-            <TermsCheckbox
-              checked={termsAccepted}
-              onCheckedChange={setTermsAccepted}
-            />
-          ) : null}
-
-          <Button
-            type="submit"
-            disabled={sendMagicLinkMutation.isPending}
-            className="h-11 w-full"
-          >
-            {sendMagicLinkMutation.isPending ? 'Sending...' : 'Continue'}
-          </Button>
-
-          {errorMessage ? (
-            <Alert variant="secondaryDestructive">
-              <AlertTitle>Something went wrong</AlertTitle>
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-          ) : null}
+          <Clawpilot className="h-9 w-9 text-muted-foreground" />
+          <h1 className="text-2xl font-light tracking-tight text-foreground">
+            Get a magic link.
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your email and we will send you a sign-in link.
+          </p>
         </div>
-      </form>
+
+        <form onSubmit={handleSendMagicLink} noValidate className="mt-2">
+          <div className="flex flex-col gap-3">
+            <Input
+              type="email"
+              placeholder="Email"
+              autoComplete="email"
+              required
+              className="h-11"
+              value={email}
+              onChange={event => {
+                setEmail(event.target.value);
+              }}
+            />
+
+            {isSignUp ? (
+              <TermsCheckbox
+                checked={termsAccepted}
+                onCheckedChange={setTermsAccepted}
+              />
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={sendMagicLinkMutation.isPending}
+              className="h-11 w-full"
+            >
+              {sendMagicLinkMutation.isPending ? 'Sending...' : 'Continue'}
+            </Button>
+
+            {errorMessage ? (
+              <Alert variant="secondaryDestructive">
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

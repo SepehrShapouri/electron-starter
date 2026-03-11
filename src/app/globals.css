@@ -1,11 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  font-size: 16px;
   font-family: Inter, sans-serif;
-  font-feature-settings: "liga" 1, "calt" 1; /* fix for Chrome */
+  font-feature-settings:
+    "liga" 1,
+    "calt" 1; /* fix for Chrome */
 }
 @supports (font-variation-settings: normal) {
   :root {
@@ -14,12 +18,8 @@
 }
 
 @theme inline {
-  --animate-first: moveVertical 30s ease infinite;
-  --animate-second: moveInCircle 20s reverse infinite;
-  --animate-third: moveInCircle 40s linear infinite;
-  --animate-fourth: moveHorizontal 40s ease infinite;
-  --animate-fifth: moveInCircle 20s ease infinite;
-
+  --font-sans: InterVariable, Inter, sans-serif;
+  --font-sans--font-feature-settings: "liga" 1, "calt" 1;
   --font-mono: var(--font-geist-mono);
 
   --color-background: var(--background-1);
@@ -29,12 +29,31 @@
 
   --color-modal: var(--modal);
   --color-floated: var(--floated);
-  --color-floated-blur:var(--floated-blur);
+
+  --color-card: var(--modal);
+  --color-card-foreground: var(--neutral-12);
+  --color-popover: var(--modal);
+  --color-popover-foreground: var(--neutral-12);
+
+  --color-primary: var(--neutral-12);
+  --color-primary-foreground: var(--neutral-1);
+
   --color-border: var(--neutral-a5);
+  --color-input: var(--neutral-a5);
   --color-ring: var(--blue-9);
 
   --color-foreground: var(--neutral-12);
   --color-muted-foreground: var(--neutral-11);
+
+  --color-secondary: var(--neutral-a3);
+  --color-secondary-foreground: var(--neutral-12);
+  --color-muted: var(--neutral-a3);
+
+  --color-accent: var(--neutral-a3);
+  --color-accent-foreground: var(--neutral-12);
+
+  --color-destructive: var(--red-9);
+  --color-destructive-foreground: oklch(100% 0 0);
 
   --color-sidebar: var(--background-1);
   --color-sidebar-ring: var(--blue-9);
@@ -44,6 +63,12 @@
   --color-sidebar-primary-foreground: var(--neutral-12);
   --color-sidebar-primary: var(--neutral-a3);
   --color-sidebar-foreground: var(--neutral-12);
+
+  --color-chart-1: var(--blue-9);
+  --color-chart-2: var(--red-9);
+  --color-chart-3: var(--green-9);
+  --color-chart-4: var(--yellow-9);
+  --color-chart-5: var(--purple-9);
 
   --color-primary-1: var(--purple-1);
   --color-primary-2: var(--purple-2);
@@ -287,7 +312,7 @@
 }
 
 :root {
-  --radius: 0.98rem;
+  --radius: 0.8125rem;
 
   --background-1: oklch(100% 0 0);
   --background-2: oklch(98.21% 0.0046 262.46);
@@ -296,7 +321,7 @@
 
   --modal: oklch(100% 0 0);
   --floated: oklch(100% 0 0);
-  --floated-blur:rgba(255, 255, 255, 0.92);
+
   --neutral-1: oklch(100% 0 0);
   --neutral-2: oklch(0.974 0.004 286.33);
   --neutral-3: oklch(0.9668 0.0058 264.53);
@@ -322,6 +347,12 @@
   --neutral-a10: oklch(0.1384 0.0482 256.53 / 50.2%);
   --neutral-a11: oklch(0.1266 0.0358 249.94 / 62.35%);
   --neutral-a12: oklch(0.0865 0.0292 255.69 / 88.63%);
+
+  --chart-1: var(--blue-9);
+  --chart-2: var(--red-9);
+  --chart-3: var(--green-9);
+  --chart-4: var(--yellow-9);
+  --chart-5: var(--purple-9);
 
   --blue-1: oklch(0.9939 0.002854 264.5);
   --blue-2: oklch(0.9808 0.0091 258.34);
@@ -479,7 +510,8 @@
   --beige-a11: oklch(0.2105 0.0486 117.06 / 67.06%);
   --beige-a12: oklch(0.1228 0.0277 114.52 / 86.67%);
 
-  --shadow-fancy: 0px 24px 24px -8px rgba(46, 54, 71, 0.04),
+  --shadow-fancy:
+    0px 24px 24px -8px rgba(46, 54, 71, 0.04),
     0px 10px 10px -5px rgba(32, 38, 50, 0.04),
     0px 5px 5px -2.5px rgba(36, 42, 56, 0.04),
     0px 3px 3px -1.5px rgba(38, 44, 57, 0.04),
@@ -496,7 +528,7 @@
 
   --modal: oklch(0.2099 0.0039 286.06);
   --floated: oklch(0.2099 0.0039 286.06);
-  --floated-blur:rgba(24, 24, 26, 0.57);
+
   --neutral-1: oklch(0.1541 0.0046 264.43);
   --neutral-2: oklch(0.2099 0.0039 286.06);
   --neutral-3: oklch(0.2532 0.0056 285.99);
@@ -522,6 +554,12 @@
   --neutral-a10: oklch(0.943 0.0273 276.84 / 49.8%);
   --neutral-a11: oklch(0.9612 0.0174 282.54 / 72.94%);
   --neutral-a12: oklch(1 0 0);
+
+  --chart-1: var(--blue-9);
+  --chart-2: var(--red-9);
+  --chart-3: var(--green-9);
+  --chart-4: var(--yellow-9);
+  --chart-5: var(--purple-9);
 
   --blue-1: oklch(0.1418 0.0213 250.64);
   --blue-2: oklch(0.1777 0.0341 259.91);
@@ -679,44 +717,10 @@
   --beige-a11: oklch(0.9877 0.0432 114.19 / 73.33%);
   --beige-a12: oklch(0.9947 0.0184 113.33 / 91.76%);
 
-  --shadow-fancy: 0px 0px 0px 1px var(--neutral-4, #29292d),
-    0px 0px 0px 2px #18181a;
+  --shadow-fancy:
+    0px 0px 0px 1px var(--neutral-4, #29292d), 0px 0px 0px 2px #18181a;
 }
-@keyframes moveHorizontal {
-  0% {
-    transform: translateX(-50%) translateY(-10%);
-  }
-  50% {
-    transform: translateX(50%) translateY(10%);
-  }
-  100% {
-    transform: translateX(-50%) translateY(-10%);
-  }
-}
- 
-@keyframes moveInCircle {
-  0% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(180deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
- 
-@keyframes moveVertical {
-  0% {
-    transform: translateY(-50%);
-  }
-  50% {
-    transform: translateY(50%);
-  }
-  100% {
-    transform: translateY(-50%);
-  }
-}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -724,35 +728,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-
-/* Make interactive elements clickable within drag regions */
-button,
-a,
-input,
-textarea,
-select,
-[role='button'],
-[tabindex='0'] {
-  -webkit-app-region: no-drag;
-}
-
-::-webkit-scrollbar {
-  display: none;
-}
-
-.app-titlebar {
-  height: var(--titlebar-height);
-  -webkit-app-region: drag;
-}
-
-.app-titlebar-inner {
-  display: flex;
-  align-items: center;
-}
-
-/* Keep toasts above sheet/dialog overlays */
-[data-sileo-viewport] {
-  z-index: 9999 !important;
 }

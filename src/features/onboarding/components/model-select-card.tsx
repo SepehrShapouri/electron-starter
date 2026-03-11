@@ -40,7 +40,7 @@ export function ModelSelectCard({
   onSelect,
 }: ModelSelectCardProps) {
   return (
-    <div className="grid grid-cols-3 gap-2.5">
+    <div className="flex flex-col gap-2">
       {MODELS.map(model => {
         const isSelected = selectedModel === model.id;
         const Icon = model.icon;
@@ -51,15 +51,14 @@ export function ModelSelectCard({
             type="button"
             onClick={() => onSelect(model.id)}
             aria-pressed={isSelected}
-            className={`relative flex h-full w-full cursor-pointer flex-col items-start gap-3 rounded-xl px-3.5 py-3 text-left transition-colors active:scale-99 ${
+            className={`relative flex h-full w-full cursor-pointer items-start gap-4 rounded-lg p-4 text-left transition-colors ease-in active:scale-99 ${
               isSelected
                 ? 'bg-neutral-a4'
-                : 'bg-transparent hover:bg-neutral-a3'
+                : 'bg-transparent hover:bg-neutral-a3 border'
             }`}
           >
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-2">
-              <Icon className="size-5" />
-            </div>
+            <Icon className="size-5" />
+
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="line-clamp-2 text-sm font-medium text-foreground">
                 {model.name}
