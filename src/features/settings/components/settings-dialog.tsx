@@ -9,6 +9,7 @@ import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Settings, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import BillingTab from './billing-tab';
+import AdvancedTab from './advanced-tab';
 
 type Tab = 'account' | 'model' | 'billing' | 'advanced';
 
@@ -82,6 +83,7 @@ function SettingsDialog() {
             </div>
             {activeTab == 'account' && <AccountTab />}
             {activeTab == 'billing' && <BillingTab />}
+            {activeTab == 'advanced' && <AdvancedTab />}
           </div>
         </div>
       </DialogContent>
