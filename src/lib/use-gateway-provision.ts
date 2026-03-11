@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { authApi } from './auth-api';
+import { ApiError } from './axios';
 
 export type GatewayProvisionConfig = GatewayConnectionConfig;
 
@@ -20,6 +21,15 @@ export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
     refetchOnMount: 'always',
     staleTime: 0,
     enabled,
+    refetchInterval: query => {
+      if (!query.state.data) return false;
+      const status = query.state.data.status;
+      return status === 'running' || status === 'stopped' ? false : 5000;
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 404) return false;
+      return failureCount < 2;
+    },
   });
 
   const gatewayConfig = useMemo<GatewayProvisionConfig | null>(() => {
@@ -28,7 +38,6 @@ export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
     if (!profile?.gatewayUrl) {
       return null;
     }
-    
     return {
       gatewayUrl: profile.gatewayUrl.trim(),
       token: profile.gatewayToken || undefined,

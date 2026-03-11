@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft } from 'lucide-react';
 
 const PROVIDER_LABELS: Record<string, string> = {
   anthropic: 'Claude 4.5 Sonnet',
@@ -7,113 +8,90 @@ const PROVIDER_LABELS: Record<string, string> = {
   gemini: 'Gemini 3 Flash Preview',
 };
 
-const INTEGRATION_LABELS: Record<string, string> = {
-  telegram: 'Telegram',
-  slack: 'Slack',
-  whatsapp: 'WhatsApp',
-  discord: 'Discord',
-};
-
 type DeployCardProps = {
   provider: string;
   keySource: 'credits' | 'byok';
-  integration?: string | null;
   isSubscribing: boolean;
   isLaunching: boolean;
   isLoading: boolean;
   isSubscribed: boolean;
   canLaunchAfterSubscribe?: boolean;
   onSubscribe: () => void;
+  onBack: () => void;
 };
 
 export function DeployCard({
   provider,
   keySource,
-  integration,
   isSubscribing,
   isLaunching,
   isLoading,
   isSubscribed,
   canLaunchAfterSubscribe = false,
   onSubscribe,
+  onBack,
 }: DeployCardProps) {
   const isBusy = isSubscribing || isLaunching || isLoading;
   const providerLabel = PROVIDER_LABELS[provider] ?? provider;
   const keySourceLabel =
     keySource === 'byok' ? 'Own API key' : 'Clawpilot credits';
-  const integrationLabel = integration
-    ? (INTEGRATION_LABELS[integration] ?? integration)
-    : null;
-
-  const summaryItems = [
-    { label: 'Model', value: providerLabel },
-    { label: 'API keys', value: keySourceLabel },
-    ...(integrationLabel
-      ? [{ label: 'Integration', value: integrationLabel }]
-      : []),
-  ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl  bg-background-2 shadow-fancy p-4 sm:p-5">
-        <p className="mb-3 text-sm font-medium tracking-tight text-foreground">
-          Setup summary
+    <div className="flex flex-col h-full justify-between">
+      <div className="flex flex-col gap-6">
+        <p className="text-sm font-medium text-muted-foreground">
+          Confirm your setup
         </p>
-        <div className="flex flex-col divide-y divide-border/70">
-          {summaryItems.map(item => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between py-2.5 text-sm"
-            >
-              <span className="text-muted-foreground">{item.label}</span>
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                {!!item.value && (
-                  <Check className="size-3.5 text-foreground/70" />
-                )}
-                {item.value ?? '--'}
-              </span>
-            </div>
-          ))}
+        <div className="p-4 flex flex-col gap-4 rounded-lg bg-floated-blur w-full">
+          <div className="flex w-full justify-between">
+            <p className="text-base">Model</p>
+            <p className="text-base font-medium">{providerLabel}</p>
+          </div>
+          <Separator />
+          <div className="flex w-full justify-between">
+            <p className="text-base">API Keys</p>
+            <p className="text-base font-medium">{keySourceLabel}</p>
+          </div>
         </div>
       </div>
-
-      <div className="flex flex-col gap-4 rounded-xl bg-background-2 shadow-fancy p-4 sm:p-5">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <p className="text-3xl font-light tracking-tight text-foreground">
-            $25
-            <span className="text-sm font-normal text-muted-foreground">
-              {' '}
-              / month
-            </span>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Includes <span className="font-medium text-foreground">$10</span> in
-            AI credits
-          </p>
+      <div className="flex flex-col gap-8">
+        <Separator />
+        <div className="flex flex-col gap-2">
+          <p className="text-3xl font-medium">$25 / month</p>
+          {keySource == 'credits' && (
+            <p className="text-sm text-muted-foreground">
+              Includes $10 in AI credits
+            </p>
+          )}
         </div>
-
-        <Button
-          className="h-11 w-full"
-          variant={
-            isSubscribed && !canLaunchAfterSubscribe ? 'secondary' : 'default'
-          }
-          disabled={isSubscribed ? !canLaunchAfterSubscribe || isBusy : isBusy}
-          size="lg"
-          onClick={onSubscribe}
-        >
-          {isLaunching
-            ? 'Launching...'
-            : isSubscribed && canLaunchAfterSubscribe
-              ? 'Launch agent'
-              : isSubscribed
-                ? 'Subscribed!'
-                : isSubscribing
-                  ? 'Redirecting to checkout...'
-                  : isLoading
-                    ? 'Loading...'
-                    : 'Subscribe & Launch'}
-        </Button>
-
+        <div className="flex gap-2 w-full">
+          <Button onClick={onBack} variant="secondary" size="iconXl">
+            <ArrowLeft />
+          </Button>
+          <Button
+            variant={
+              isSubscribed && !canLaunchAfterSubscribe ? 'secondary' : 'default'
+            }
+            disabled={
+              isSubscribed ? !canLaunchAfterSubscribe || isBusy : isBusy
+            }
+            size="xl"
+            className="flex-1"
+            onClick={onSubscribe}
+          >
+            {isLaunching
+              ? 'Launching...'
+              : isSubscribed && canLaunchAfterSubscribe
+                ? 'Launch agent'
+                : isSubscribed
+                  ? 'Subscribed!'
+                  : isSubscribing
+                    ? 'Redirecting to checkout...'
+                    : isLoading
+                      ? 'Loading...'
+                      : 'Subscribe & Launch'}
+          </Button>
+        </div>
         {isSubscribed && canLaunchAfterSubscribe && (
           <p className="text-center text-xs text-muted-foreground">
             Subscription is active. Finish by launching your agent.

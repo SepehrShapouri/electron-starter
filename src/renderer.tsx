@@ -29,10 +29,6 @@
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-console.log(
-  '👋 This message is being logged by "renderer.tsx", included via Vite'
-);
-
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root element not found');

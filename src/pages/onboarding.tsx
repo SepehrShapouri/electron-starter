@@ -1,87 +1,36 @@
+import { BarsSpinner } from '@/components/bars-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import Clawpilot from '@/components/icons/Clawpilot.svg';
-import { authApi } from '@/lib/auth-api';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, Info, Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { DeployCard } from '@/features/onboarding/components/deploy-card';
 import { ModelSelectCard } from '@/features/onboarding/components/model-select-card';
+import {
+  encryptPayload,
+  getErrorMessage,
+  getPendingPayload,
+  isPaidStatus,
+  providerKeyInfo,
+  setPendingPayload,
+  type KeySource,
+} from '@/features/onboarding/lib/utils';
+import useSignout from '@/hooks/use-signout';
+import { authApi } from '@/lib/auth-api';
+import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import gsap from 'gsap';
-
-type KeySource = 'credits' | 'byok';
-
-type OnboardingSecrets = {
-  model: string;
-  apiKey?: string;
-  keySource: KeySource;
-};
+import { Info } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 type OnboardingPageProps = {
   checkoutStatus?: 'success' | 'cancel';
   encryptedData?: string;
 };
 
-const PENDING_ONBOARDING_PAYLOAD_KEY = 'clawpilot:pending_onboarding_payload';
 const ONBOARDING_LAUNCH_MOCK_ENABLED = false;
-
-const isPaidStatus = (status: string | null) =>
-  status === 'active' || status === 'trialing';
-
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Something went wrong';
-
-async function encryptPayload(
-  base64urlKey: string,
-  data: OnboardingSecrets
-): Promise<string> {
-  const raw = Uint8Array.from(
-    atob(base64urlKey.replace(/-/g, '+').replace(/_/g, '/')),
-    c => c.charCodeAt(0)
-  );
-  const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, [
-    'encrypt',
-  ]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(JSON.stringify(data));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encoded
-  );
-  const combined = new Uint8Array(
-    iv.length + new Uint8Array(ciphertext).length
-  );
-  combined.set(iv);
-  combined.set(new Uint8Array(ciphertext), iv.length);
-  return btoa(String.fromCharCode(...combined))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
-const getPendingPayload = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return window.localStorage.getItem(PENDING_ONBOARDING_PAYLOAD_KEY);
-};
-
-const setPendingPayload = (value: string | null) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (!value) {
-    window.localStorage.removeItem(PENDING_ONBOARDING_PAYLOAD_KEY);
-    return;
-  }
-
-  window.localStorage.setItem(PENDING_ONBOARDING_PAYLOAD_KEY, value);
-};
 
 export default function OnboardingPage({
   checkoutStatus,
@@ -100,67 +49,8 @@ export default function OnboardingPage({
     'idle' | 'launching' | 'failed'
   >('idle');
   const provisioningStarted = useRef(false);
-
-  const billingQuery = useQuery({
-    queryKey: ['billing-status'],
-    queryFn: authApi.getBillingStatus,
-  });
-
-  const isSubscribed = Boolean(
-    billingQuery.data?.isActive ||
-    isPaidStatus(billingQuery.data?.status ?? null)
-  );
-
-  const subscribeMutation = useMutation({
-    mutationFn: authApi.createOnboardingCheckoutSession,
-    onMutate: () => setErrorMessage(''),
-    onSuccess: async data => {
-      if (window.electronAPI) {
-        await window.electronAPI.openExternalUrl(data.url);
-        return;
-      }
-
-      window.location.href = data.url;
-    },
-    onError: error => setErrorMessage(getErrorMessage(error)),
-  });
-
-  const signOutMutation = useMutation({
-    mutationFn: authApi.signOut,
-    onSuccess: async () => {
-      setPendingPayload(null);
-      await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/auth/welcome' });
-    },
-    onError: error => setErrorMessage(getErrorMessage(error)),
-  });
-
-  const runProvision = async (payload: string) => {
-    setProvisionState('launching');
-    setErrorMessage('');
-
-    try {
-      if (ONBOARDING_LAUNCH_MOCK_ENABLED) {
-        await new Promise(resolve => {
-          window.setTimeout(resolve, 1200);
-        });
-      } else {
-        await authApi.provisionFromOnboarding({
-          encryptedPayload: payload,
-        });
-      }
-
-      await authApi.saveOnboarding({ completed: true });
-      await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
-      await queryClient.invalidateQueries({ queryKey: ['gateway-provision'] });
-      setPendingPayload(null);
-      navigate({ to: '/launching' });
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
-      setProvisionState('failed');
-    }
-  };
-
+  const {  signout } = useSignout();
+  
   useEffect(() => {
     const tween = gsap.fromTo(
       containerRef.current,
@@ -189,6 +79,56 @@ export default function OnboardingPage({
     };
   }, [step]);
 
+  const billingQuery = useQuery({
+    queryKey: ['billing-status'],
+    queryFn: authApi.getBillingStatus,
+  });
+
+  const isSubscribed = Boolean(
+    billingQuery.data?.isActive ||
+    isPaidStatus(billingQuery.data?.status ?? null)
+  );
+
+  const subscribeMutation = useMutation({
+    mutationFn: authApi.createOnboardingCheckoutSession,
+    onMutate: () => setErrorMessage(''),
+    onSuccess: async data => {
+      if (window.electronAPI) {
+        await window.electronAPI.openExternalUrl(data.url);
+        return;
+      }
+
+      window.location.href = data.url;
+    },
+    onError: error => setErrorMessage(getErrorMessage(error)),
+  });
+
+  const runProvision = async (payload: string) => {
+    setProvisionState('launching');
+    setErrorMessage('');
+
+    try {
+      if (ONBOARDING_LAUNCH_MOCK_ENABLED) {
+        await new Promise(resolve => {
+          window.setTimeout(resolve, 1200);
+        });
+      } else {
+        await authApi.provisionFromOnboarding({
+          encryptedPayload: payload,
+        });
+      }
+
+      await authApi.saveOnboarding({ completed: true });
+      await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+      await queryClient.invalidateQueries({ queryKey: ['gateway-provision'] });
+      setPendingPayload(null);
+      navigate({ to: '/app' });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      setProvisionState('failed');
+    }
+  };
+
   useEffect(() => {
     if (checkoutStatus !== 'success' && !encryptedData) {
       return;
@@ -212,30 +152,6 @@ export default function OnboardingPage({
   }, [checkoutStatus, encryptedData, isSubscribed]);
 
   const isByok = keySource === 'byok';
-
-  const providerKeyInfo: Record<
-    string,
-    { label: string; placeholder: string; url: string; urlLabel: string }
-  > = {
-    anthropic: {
-      label: 'Anthropic API Key',
-      placeholder: 'sk-ant-...',
-      url: 'https://console.anthropic.com/settings/keys',
-      urlLabel: 'console.anthropic.com',
-    },
-    openai: {
-      label: 'OpenAI API Key',
-      placeholder: 'sk-...',
-      url: 'https://platform.openai.com/api-keys',
-      urlLabel: 'platform.openai.com',
-    },
-    gemini: {
-      label: 'Google AI API Key',
-      placeholder: 'AIza...',
-      url: 'https://aistudio.google.com/apikey',
-      urlLabel: 'aistudio.google.com',
-    },
-  };
 
   const keyInfo = providerKeyInfo[selectedModel] ?? providerKeyInfo.anthropic;
 
@@ -311,7 +227,7 @@ export default function OnboardingPage({
         ref={containerRef}
         className="mx-auto flex w-full max-w-lg flex-col h-full items-center justify-center gap-5 px-6 py-20"
       >
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <BarsSpinner size={32} />
         <p className="text-2xl font-light tracking-tight text-foreground">
           Waking up your lobster...
         </p>
@@ -365,143 +281,118 @@ export default function OnboardingPage({
   }
 
   return (
-    <div className="h-svh overflow-y-auto">
-      <div
-        ref={containerRef}
-        className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6"
-      >
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => signOutMutation.mutate()}
-            disabled={signOutMutation.isPending}
+    <div
+      ref={containerRef}
+      className={cn(
+        'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex gap-16'
+      )}
+    >
+      <div className="flex w-full flex-col justify-between h-full">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-medium text-muted-foreground">
+            {step == 1 ? 'Pick a model' : 'Launch'}
+          </p>
+          <p className="text-3xl font-medium text-foreground">
+            {step == 1
+              ? 'The power of your personal agent responses.'
+              : 'Confirm your setup, subscribe and launch your personal AI agent'}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          {checkoutStatus === 'cancel' && (
+            <Alert variant="secondaryWarning" className="mb-4">
+              <Info />
+              <AlertTitle>Checkout canceled</AlertTitle>
+              <AlertDescription>
+                No worries. Your onboarding settings are still here.
+              </AlertDescription>
+            </Alert>
+          )}
+          {errorMessage && (
+            <Alert variant="secondaryDestructive" className="mt-4">
+              <Info />
+              <AlertTitle>Oops!</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+          <Label
+            className="text-sm font-medium text-foreground cursor-pointer hover:underline transition-all"
+            onClick={() => signout()}
           >
-            {signOutMutation.isPending ? 'Signing out...' : 'Log out'}
-          </Button>
+            Logout
+          </Label>
         </div>
-
-        <div className="flex flex-col gap-3">
-          <Clawpilot className="h-9 w-9 text-muted-foreground" />
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-light tracking-tight text-foreground sm:text-3xl">
-              {step === 1 ? 'Pick a model' : 'Launch your agent'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {step === 1
-                ? 'This powers your agent responses. You can switch it later.'
-                : 'Confirm your setup, subscribe, and launch your agent.'}
-            </p>
-          </div>
-        </div>
-
-        {checkoutStatus === 'cancel' && (
-          <Alert variant="secondaryWarning" className="mb-4">
-            <Info />
-            <AlertTitle>Checkout canceled</AlertTitle>
-            <AlertDescription>
-              No worries. Your onboarding settings are still here.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div ref={stepContentRef}>
-          {step === 1 && (
-            <div className="flex flex-col gap-4">
+      </div>
+      <Separator orientation="vertical" />
+      <div
+        className="flex w-full flex-col justify-between h-full"
+        ref={stepContentRef}
+      >
+        {step === 1 && (
+          <>
+            <div className="flex flex-col gap-8 w-full">
               <ModelSelectCard
                 selectedModel={selectedModel}
                 onSelect={setSelectedModel}
               />
 
-              <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-background-2/30 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-base font-medium text-foreground">
-                      Use your own API key
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Bring your own provider key for unlimited usage
-                    </p>
-                  </div>
-                  <Switch
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-3">
+                  <Checkbox
                     checked={isByok}
+                    id="isByok"
                     onCheckedChange={checked => {
                       setKeySource(checked ? 'byok' : 'credits');
                     }}
+                    className="size-6 rounded-[6.8px] cursor-pointer active:scale-99"
                   />
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor="isByok"
+                      className="text-base leading-[14px] font-medium text-foreground"
+                    >
+                      Use your own API key
+                    </Label>
+                    <Label
+                      htmlFor="isByok"
+                      className="text-sm text-muted-foreground leading-[20px]"
+                    >
+                      Bring your own provider key for unlimited usage
+                    </Label>
+                  </div>
                 </div>
 
                 {isByok && (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                      {keyInfo.label}
-                    </p>
-                    <Input
-                      size="xl"
-                      type="password"
-                      placeholder={keyInfo.placeholder}
-                      value={apiKey}
-                      onChange={event => setApiKey(event.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Get your key at{' '}
-                      <a
-                        href={keyInfo.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-foreground/80 hover:text-foreground hover:underline"
-                      >
-                        {keyInfo.urlLabel}
-                      </a>
-                    </p>
-                  </div>
+                  <Input
+                    size="xl"
+                    variant="soft"
+                    type="password"
+                    placeholder={keyInfo.placeholder}
+                    value={apiKey}
+                    onChange={event => setApiKey(event.target.value)}
+                  />
                 )}
               </div>
             </div>
-          )}
-
-          {step === 2 && (
-            <DeployCard
-              provider={selectedModel}
-              keySource={keySource}
-              isSubscribing={subscribeMutation.isPending}
-              isLaunching={false}
-              isLoading={billingQuery.isLoading}
-              isSubscribed={isSubscribed}
-              canLaunchAfterSubscribe={isSubscribed}
-              onSubscribe={handleSubscribe}
-            />
-          )}
-        </div>
-
-        {errorMessage && (
-          <Alert variant="secondaryDestructive" className="mt-4">
-            <Info />
-            <AlertTitle>Oops!</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
+            <Button size="xl" onClick={handleContinue}>
+              Continue
+            </Button>
+          </>
         )}
 
-        <div className="mt-5 flex items-center justify-between">
-          <div>
-            {step > 1 && (
-              <Button variant="outline" size="lg" onClick={handleBack}>
-                <ArrowLeft className="size-4" />
-                Back
-              </Button>
-            )}
-          </div>
-          <div>
-            {step === 1 && (
-              <div className="flex items-center gap-2">
-                <Button size="lg" onClick={handleContinue}>
-                  Continue
-                  <ArrowRight className="size-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
+        {step === 2 && (
+          <DeployCard
+            onBack={handleBack}
+            provider={selectedModel}
+            keySource={keySource}
+            isSubscribing={subscribeMutation.isPending}
+            isLaunching={false}
+            isLoading={billingQuery.isLoading}
+            isSubscribed={isSubscribed}
+            canLaunchAfterSubscribe={isSubscribed}
+            onSubscribe={handleSubscribe}
+          />
+        )}
       </div>
     </div>
   );

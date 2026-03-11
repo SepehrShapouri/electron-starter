@@ -44,6 +44,16 @@ export const loadAuthToken = () => {
 
 loadAuthToken();
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export const getApiErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     const payload = error.response?.data as ApiErrorPayload | undefined;

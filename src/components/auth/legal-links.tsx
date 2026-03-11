@@ -20,7 +20,7 @@ export function LegalLinks({ className }: LegalLinksProps) {
       <a
         href={LEGAL_URLS.termsOfService}
         onClick={handleExternalClick(LEGAL_URLS.termsOfService)}
-        className="text-foreground/80 transition-colors hover:text-foreground"
+        className="transition-colors hover:text-foreground"
       >
         Terms of Service
       </a>
@@ -28,7 +28,7 @@ export function LegalLinks({ className }: LegalLinksProps) {
       <a
         href={LEGAL_URLS.privacyPolicy}
         onClick={handleExternalClick(LEGAL_URLS.privacyPolicy)}
-        className="text-foreground/80 transition-colors hover:text-foreground"
+        className="transition-colors hover:text-foreground"
       >
         Privacy Policy
       </a>
@@ -36,7 +36,7 @@ export function LegalLinks({ className }: LegalLinksProps) {
       <a
         href={LEGAL_URLS.eula}
         onClick={handleExternalClick(LEGAL_URLS.eula)}
-        className="text-foreground/80 transition-colors hover:text-foreground"
+        className="transition-colors hover:text-foreground"
       >
         EULA
       </a>
