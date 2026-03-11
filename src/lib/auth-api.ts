@@ -1,4 +1,5 @@
-import { apiClient, getApiErrorMessage, setAuthToken } from './axios';
+import { apiClient, ApiError, getApiErrorMessage, setAuthToken } from './axios';
+import axios from 'axios';
 import { authClient } from './auth-client';
 
 type AuthResult = {
@@ -137,7 +138,8 @@ export const authApi = {
       .get<GatewayProvision>('/api/v1/infra/provision')
       .then(response => response.data)
       .catch(error => {
-        throw new Error(getApiErrorMessage(error));
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        throw new ApiError(getApiErrorMessage(error), status);
       }),
   getProvisionStatus: (instanceId: string) =>
     apiClient

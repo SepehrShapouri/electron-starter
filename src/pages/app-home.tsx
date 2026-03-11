@@ -10,6 +10,8 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { InstanceLaunching } from '@/components/app/instance-launching';
+import { InstanceSetup } from '@/components/app/instance-setup';
+import { ApiError } from '@/lib/axios';
 import { useRouteContext } from '@tanstack/react-router';
 import { Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
@@ -103,6 +105,15 @@ export default function AppHome() {
       </div>
     );
   }
+  if (
+    !profile &&
+    provisionQuery.isError &&
+    provisionQuery.error instanceof ApiError &&
+    provisionQuery.error.status === 404
+  ) {
+    return <InstanceSetup />;
+  }
+
   if (!profile && provisionQuery.isError) {
     const message =
       provisionQuery.error instanceof Error
