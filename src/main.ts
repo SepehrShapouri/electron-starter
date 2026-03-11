@@ -1,5 +1,4 @@
 import { app, autoUpdater, BrowserWindow, ipcMain, shell } from 'electron';
-import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
@@ -114,225 +113,6 @@ let appUpdateState: AppUpdateState = baseUpdateState;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let mainWindow: BrowserWindow | null = null;
 let pendingAuthDeepLink: string | null = null;
-
-type GatewayRpcResponseFrame = {
-  type?: unknown;
-  id?: unknown;
-  ok?: unknown;
-  payload?: unknown;
-  error?: { message?: unknown };
-};
-
-const readGatewayErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  return fallback;
-};
-
-const GATEWAY_WS_PORT = '18789';
-
-const toGatewaySocketUrl = (rawGatewayUrl: string) => {
-  const raw = rawGatewayUrl.trim();
-  if (!raw) {
-    throw new Error('Missing gateway URL.');
-  }
-
-  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
-  let parsed: URL;
-
-  try {
-    parsed = new URL(hasScheme ? raw : `ws://${raw}`);
-  } catch {
-    throw new Error(`Invalid gateway URL: ${raw}`);
-  }
-
-  if (parsed.protocol === 'http:') {
-    parsed.protocol = 'ws:';
-  } else if (parsed.protocol === 'https:') {
-    parsed.protocol = 'wss:';
-  } else if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
-    throw new Error(`Unsupported gateway URL protocol: ${parsed.protocol}`);
-  }
-
-  if (!parsed.port) {
-    parsed.port = GATEWAY_WS_PORT;
-  }
-
-  return parsed.toString();
-};
-
-const patchGatewayControlUiOrigins = async (params: {
-  gatewayUrl: string;
-  token: string;
-  origins: string[];
-  composioDefaultUserId: string;
-}) => {
-  const gatewayUrl = params.gatewayUrl.trim();
-  const token = params.token.trim();
-  const origins = Array.from(
-    new Set(params.origins.map(origin => origin.trim()).filter(Boolean))
-  );
-  const composioDefaultUserId = params.composioDefaultUserId.trim();
-
-  if (!gatewayUrl || !token || origins.length === 0 || !composioDefaultUserId) {
-    throw new Error(
-      'gatewayUrl, token, origins, and composioDefaultUserId are required.'
-    );
-  }
-
-  const ws = new WebSocket(toGatewaySocketUrl(gatewayUrl));
-  const pending = new Map<
-    string,
-    { resolve: (value: unknown) => void; reject: (error: Error) => void }
-  >();
-
-  const flushPending = (error: Error) => {
-    for (const request of pending.values()) {
-      request.reject(error);
-    }
-    pending.clear();
-  };
-
-  const request = <T = unknown>(method: string, params?: unknown) => {
-    const id = randomUUID();
-    const frame = { type: 'req', id, method, params };
-    const promise = new Promise<T>((resolve, reject) => {
-      pending.set(id, { resolve: value => resolve(value as T), reject });
-    });
-
-    ws.send(JSON.stringify(frame));
-    return promise;
-  };
-
-  await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      try {
-        ws.close();
-      } catch {
-        // no-op
-      }
-      reject(new Error('Gateway patch request timed out.'));
-    }, 20_000);
-
-    ws.onopen = () => {
-      void (async () => {
-        try {
-          await request('connect', {
-            minProtocol: 3,
-            maxProtocol: 3,
-            client: {
-              id: 'gateway-client',
-              displayName: 'clawpilot-main',
-              version: app.getVersion(),
-              platform: process.platform,
-              mode: 'backend',
-              instanceId: randomUUID(),
-            },
-            auth: { token },
-            role: 'operator',
-            scopes: ['operator.admin'],
-          });
-
-          const snapshot = (await request('config.get', {})) as {
-            hash?: unknown;
-          };
-          const baseHash =
-            typeof snapshot?.hash === 'string' ? snapshot.hash.trim() : '';
-
-          if (!baseHash) {
-            throw new Error('Config hash missing from gateway snapshot.');
-          }
-
-          await request('config.patch', {
-            baseHash,
-            raw: JSON.stringify({
-              gateway: {
-                controlUi: {
-                  allowedOrigins: origins,
-                },
-              },
-              plugins: {
-                entries: {
-                  composio: {
-                    config: {
-                      defaultUserId: composioDefaultUserId,
-                    },
-                  },
-                },
-              },
-            }),
-          });
-
-          clearTimeout(timeout);
-          ws.close();
-          resolve();
-        } catch (error) {
-          clearTimeout(timeout);
-          ws.close();
-          reject(
-            new Error(
-              readGatewayErrorMessage(
-                error,
-                'Unable to patch gateway launch configuration.'
-              )
-            )
-          );
-        }
-      })();
-    };
-
-    ws.onmessage = event => {
-      let parsed: GatewayRpcResponseFrame;
-      try {
-        parsed = JSON.parse(
-          String(event.data ?? '')
-        ) as GatewayRpcResponseFrame;
-      } catch {
-        return;
-      }
-
-      if (parsed.type !== 'res' || typeof parsed.id !== 'string') {
-        return;
-      }
-
-      const pendingRequest = pending.get(parsed.id);
-      if (!pendingRequest) {
-        return;
-      }
-
-      pending.delete(parsed.id);
-
-      if (parsed.ok === true) {
-        pendingRequest.resolve(parsed.payload);
-        return;
-      }
-
-      const message =
-        parsed.error && typeof parsed.error.message === 'string'
-          ? parsed.error.message
-          : 'Gateway request failed.';
-      pendingRequest.reject(new Error(message));
-    };
-
-    ws.onerror = () => {
-      clearTimeout(timeout);
-      const error = new Error('Gateway websocket error.');
-      flushPending(error);
-      reject(error);
-    };
-
-    ws.onclose = () => {
-      clearTimeout(timeout);
-      if (pending.size > 0) {
-        const error = new Error('Gateway websocket closed unexpectedly.');
-        flushPending(error);
-        reject(error);
-      }
-    };
-  });
-};
 
 const isSupportedDeepLink = (value: string) => {
   try {
@@ -689,22 +469,6 @@ ipcMain.handle('auth:get-pending-deep-link', () => {
   return url;
 });
 
-ipcMain.handle(
-  'gateway:patch-control-ui-origins',
-  async (
-    _event,
-    payload: {
-      gatewayUrl: string;
-      token: string;
-      origins: string[];
-      composioDefaultUserId: string;
-    }
-  ) => {
-    await patchGatewayControlUiOrigins(payload);
-    return true;
-  }
-);
-
 const createWindow = () => {
   // Create the browser window.
   const isMac = process.platform === 'darwin';
@@ -712,6 +476,8 @@ const createWindow = () => {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minHeight: 720,
+    minWidth: 1024,
     icon: path.join(app.getAppPath(), 'src', 'assets', 'Icon.icns'),
     frame: isMac,
     backgroundColor: '#1a1a1a',

@@ -52,16 +52,6 @@ const electronAPI = {
     ipcRenderer.invoke('auth:open-external-url', url) as Promise<void>,
   getPendingAuthDeepLink: () =>
     ipcRenderer.invoke('auth:get-pending-deep-link') as Promise<string | null>,
-  patchGatewayControlUiOrigins: (payload: {
-    gatewayUrl: string;
-    token: string;
-    origins: string[];
-    composioDefaultUserId: string;
-  }) =>
-    ipcRenderer.invoke(
-      'gateway:patch-control-ui-origins',
-      payload
-    ) as Promise<boolean>,
   onAuthDeepLink: (callback: (url: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, value: string) => {
       callback(value);

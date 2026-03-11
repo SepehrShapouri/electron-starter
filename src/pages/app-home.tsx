@@ -26,6 +26,12 @@ import {
   MessageResponse,
 } from '../components/ai-elements/message';
 import {
+  Context,
+  ContextContent,
+  ContextContentHeader,
+  ContextTrigger,
+} from '../components/ai-elements/context';
+import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -35,6 +41,8 @@ import {
 import { QueuePill } from '../components/app/queue-pill';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
+import { useGatewayChatSession } from '../lib/gateway/store';
+import { useContextUsage } from '../lib/use-context-usage';
 import { BarsSpinner } from '@/components/bars-spinner';
 export default function AppHome() {
   const { session } = useRouteContext({ from: '/app' });
@@ -92,6 +100,9 @@ export default function AppHome() {
     loadHistory,
     historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
+
+  const { sessionKey: resolvedSessionKey } = useGatewayChatSession();
+  const contextUsage = useContextUsage(chatConfig, resolvedSessionKey);
   const reconnect = () => {
     disconnect();
     connect();
@@ -265,12 +276,25 @@ export default function AppHome() {
           className="bg-transparent placeholder:text-muted-foreground/60"
         />
       </PromptInputBody>
-      <PromptInputFooter className="items-center p-1.5!">
+      <PromptInputFooter className="items-center p-1.5">
+        {contextUsage ? (
+          <Context
+            usedTokens={contextUsage.usedTokens}
+            maxTokens={contextUsage.maxTokens}
+            openDelay={200}
+          >
+            <ContextTrigger size="sm" />
+            <ContextContent>
+              <ContextContentHeader />
+            </ContextContent>
+          </Context>
+        ) : (
+          <span />
+        )}
         <PromptInputSubmit
           status={submitStatus}
           disabled={!resolvedChatConfig.gatewayUrl}
           onStop={abort}
-          className="ml-auto"
         />
       </PromptInputFooter>
     </PromptInput>
@@ -317,15 +341,14 @@ export default function AppHome() {
       </Empty>
     );
   }
-
   return (
     <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col">
       <div className="min-h-0 flex-1 overflow-hidden">
         {isEmptyConversation ? (
           <div className="flex h-full items-center px-4 pb-10 pt-4 sm:px-6">
             <div className="w-full flex flex-col">
-              <div className='flex flex-col gap-6 items-start'>
-                <Clawpilot className='h-8 text-neutral-a7'/>
+              <div className="flex flex-col gap-6 items-start">
+                <Clawpilot className="h-8 text-neutral-a7" />
                 <div className="flex flex-col gap-2">
                   {firstName ? (
                     <p className="text-lg">Hi, {firstName}!</p>

@@ -1,9 +1,8 @@
 import { authApi } from '@/lib/auth-api';
 import { ProvisioningStepsLoader } from '@/features/onboarding/components/provisioning-steps-loader';
 import { useGatewayProvision } from '@/lib/use-gateway-provision';
-import { Button } from '@/components/ui/button';
 import Clawpilot from '@/components/icons/Clawpilot.svg';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,27 +40,6 @@ const toLaunchStatus = (value: string | null | undefined): LaunchStatus => {
   }
 
   return 'provisioning';
-};
-
-const getUserIdFromSession = (session: unknown) => {
-  if (!session || typeof session !== 'object') {
-    return '';
-  }
-
-  const sessionRecord = session as {
-    user?: { id?: unknown };
-    id?: unknown;
-  };
-
-  if (typeof sessionRecord.user?.id === 'string') {
-    return sessionRecord.user.id.trim();
-  }
-
-  if (typeof sessionRecord.id === 'string') {
-    return sessionRecord.id.trim();
-  }
-
-  return '';
 };
 
 export default function LaunchingPage() {
@@ -107,66 +85,13 @@ export default function LaunchingPage() {
 
   const statusMeta = STATUS_META[effectiveStatus];
 
-  const allowOriginsMutation = useMutation({
-    mutationFn: async () => {
-      const gatewayUrl = profile?.gatewayUrl?.trim();
-      const gatewayToken = profile?.gatewayToken?.trim();
-      let composioDefaultUserId = profile?.userId?.trim() ?? '';
-
-      if (!gatewayUrl || !gatewayToken) {
-        throw new Error('Gateway credentials are not ready yet.');
-      }
-
-      if (!composioDefaultUserId) {
-        const session = await authApi.getSession().catch(() => null);
-        composioDefaultUserId = getUserIdFromSession(session);
-      }
-
-      if (!composioDefaultUserId) {
-        throw new Error('Unable to resolve user id for Composio setup.');
-      }
-
-      if (!window.electronAPI) {
-        throw new Error('Desktop IPC is required for final gateway setup.');
-      }
-
-      await window.electronAPI.patchGatewayControlUiOrigins({
-        gatewayUrl,
-        token: gatewayToken,
-        origins: ['null', 'http://localhost:5173'],
-        composioDefaultUserId,
-      });
-    },
-  });
-
   const statusDescription = useMemo(() => {
     if (effectiveStatus !== 'running') {
       return statusMeta.description;
     }
 
-    if (allowOriginsMutation.isPending) {
-      return 'Applying final gateway configuration before you enter the app.';
-    }
-
-    if (allowOriginsMutation.isSuccess) {
-      return 'Gateway access is ready. Redirecting you now...';
-    }
-
-    if (allowOriginsMutation.isError) {
-      return allowOriginsMutation.error instanceof Error
-        ? allowOriginsMutation.error.message
-        : 'Failed to finalize gateway configuration.';
-    }
-
-    return 'Running final gateway checks before redirecting you.';
-  }, [
-    allowOriginsMutation.error,
-    allowOriginsMutation.isError,
-    allowOriginsMutation.isPending,
-    allowOriginsMutation.isSuccess,
-    effectiveStatus,
-    statusMeta.description,
-  ]);
+    return 'Gateway access is ready. Redirecting you now...';
+  }, [effectiveStatus, statusMeta.description]);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -245,36 +170,7 @@ export default function LaunchingPage() {
   }, []);
 
   useEffect(() => {
-    if (effectiveStatus !== 'running') {
-      return;
-    }
-
-    if (allowOriginsMutation.isPending || allowOriginsMutation.isSuccess) {
-      return;
-    }
-
-    if (allowOriginsMutation.isError) {
-      return;
-    }
-
-    if (!profile?.gatewayUrl || !profile?.gatewayToken) {
-      return;
-    }
-
-    allowOriginsMutation.mutate();
-  }, [
-    allowOriginsMutation,
-    effectiveStatus,
-    profile?.gatewayToken,
-    profile?.gatewayUrl,
-  ]);
-
-  useEffect(() => {
-    if (
-      effectiveStatus !== 'running' ||
-      !allowOriginsMutation.isSuccess ||
-      hasNavigatedRef.current
-    ) {
+    if (effectiveStatus !== 'running' || hasNavigatedRef.current) {
       return;
     }
 
@@ -286,7 +182,7 @@ export default function LaunchingPage() {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [allowOriginsMutation.isSuccess, effectiveStatus, navigate]);
+  }, [effectiveStatus, navigate]);
 
   if (
     !ONBOARDING_LAUNCH_STATUS_MOCK_ENABLED &&
@@ -324,18 +220,6 @@ export default function LaunchingPage() {
             {statusDescription}
           </p>
           <ProvisioningStepsLoader status={effectiveStatus} />
-          {allowOriginsMutation.isError && (
-            <div className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => allowOriginsMutation.mutate()}
-              >
-                Retry Final Setup
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </div>
