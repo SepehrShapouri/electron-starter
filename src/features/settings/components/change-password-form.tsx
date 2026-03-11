@@ -56,9 +56,7 @@ type ChangePasswordFormProps = {
   onBack: () => void;
 };
 
-export function ChangePasswordForm({
-  onBack,
-}: ChangePasswordFormProps) {
+export function ChangePasswordForm({ onBack }: ChangePasswordFormProps) {
   const queryClient = useQueryClient();
   const {
     register,
@@ -137,16 +135,11 @@ export function ChangePasswordForm({
 
         <div className="space-y-1 px-4">
           <p className="text-sm font-medium">Change password</p>
-          <p className="text-sm text-muted-foreground">
-            Update your password without leaving the app.
-          </p>
         </div>
 
         <div className="space-y-4 px-4">
           <div className="flex flex-col gap-3">
-            <Label htmlFor="settings-current-password">
-              Current password
-            </Label>
+            <Label htmlFor="settings-current-password">Current password</Label>
             <Input
               id="settings-current-password"
               type="password"
@@ -225,10 +218,7 @@ export function ChangePasswordForm({
         >
           Reset
         </Button>
-        <Button
-          type="submit"
-          disabled={passwordMutation.isPending || !isDirty}
-        >
+        <Button type="submit" disabled={passwordMutation.isPending || !isDirty}>
           {passwordMutation.isPending ? 'Updating...' : 'Update password'}
         </Button>
       </div>

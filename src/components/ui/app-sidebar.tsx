@@ -13,9 +13,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import SettingsDialog from '@/features/settings/components/settings-dialog';
 import { useAppUpdate } from '@/hooks/use-app-update';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ArrowDownToLine, Loader2, Puzzle, Settings } from 'lucide-react';
+import { ArrowDownToLine, Loader2, Puzzle } from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -24,7 +25,6 @@ import {
   CardHeader,
   CardTitle,
 } from './card';
-import SettingsDialog from '@/features/settings/components/settings-dialog';
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = useRouterState({
     select: state => state.location.pathname,

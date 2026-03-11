@@ -34,9 +34,13 @@ export type OnboardingProfile = {
 };
 
 export type BillingStatus = {
+  product?: string | null;
   status: string | null;
   subscriptionId: string | null;
   customerId: string | null;
+  priceId?: string | null;
+  planLabel?: string | null;
+  nextBillingDate?: string | null;
   isActive: boolean;
 };
 
@@ -159,6 +163,13 @@ export const authApi = {
   getBillingStatus: () =>
     apiClient
       .get<BillingStatus>('/api/v1/infra/billing/status')
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
+  createBillingPortalSession: () =>
+    apiClient
+      .post<CheckoutResponse>('/api/v1/infra/billing/portal')
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));

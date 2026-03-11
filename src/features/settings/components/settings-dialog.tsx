@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Settings, XIcon } from 'lucide-react';
 import { useState } from 'react';
+import BillingTab from './billing-tab';
 
 type Tab = 'account' | 'model' | 'billing' | 'advanced';
 
@@ -17,7 +18,7 @@ function SettingsDialog() {
   const data = {
     nav: [
       { name: 'Account', icon: IconPeople, value: 'account' },
-      { name: 'Model', icon: Icon3dBoxBottom, value: 'model' },
+      // { name: 'Model', icon: Icon3dBoxBottom, value: 'model' },
       { name: 'Billing', icon: IconDollar, value: 'billing' },
     ],
   };
@@ -80,6 +81,7 @@ function SettingsDialog() {
               </Button>
             </div>
             {activeTab == 'account' && <AccountTab />}
+            {activeTab == 'billing' && <BillingTab />}
           </div>
         </div>
       </DialogContent>
