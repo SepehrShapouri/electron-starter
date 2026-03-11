@@ -13,9 +13,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import SettingsDialog from '@/features/settings/components/settings-dialog';
 import { useAppUpdate } from '@/hooks/use-app-update';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ArrowDownToLine, Loader2, Puzzle, Settings } from 'lucide-react';
+import { ArrowDownToLine, Loader2, Puzzle } from 'lucide-react';
 import * as React from 'react';
 import {
   Card,
@@ -137,19 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                tooltip="Settings"
-                className="h-9"
-                isActive={isSettingsActive}
-              >
-                <Link to="/app/settings">
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SettingsDialog />
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

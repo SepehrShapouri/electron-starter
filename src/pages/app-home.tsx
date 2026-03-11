@@ -12,6 +12,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { authApi } from '@/lib/auth-api';
 import { useQuery } from '@tanstack/react-query';
+import { useRouteContext } from '@tanstack/react-router';
 import { Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import {
@@ -36,6 +37,7 @@ import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
 import { BarsSpinner } from '@/components/bars-spinner';
 export default function AppHome() {
+  const { session } = useRouteContext({ from: '/app' });
   const { provisionQuery, chatConfig } = useGatewayProvision();
 
   const profile = provisionQuery.data ?? null;
@@ -243,6 +245,36 @@ export default function AppHome() {
         : status === 'error'
           ? 'error'
           : 'ready';
+  const isEmptyConversation = messages.length === 0;
+  const displayName = session?.user?.name ?? session?.name ?? null;
+  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
+  const promptComposer = (
+    <PromptInput
+      onSubmit={({ text }) => sendMessage(text)}
+      className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy **:data-[slot=input-group]:dark:shadow-none"
+    >
+      <PromptInputBody>
+        <PromptInputTextarea
+          placeholder={
+            resolvedChatConfig.gatewayUrl
+              ? connected
+                ? 'Ask ClawPilot'
+                : 'Message now. It will send when reconnected.'
+              : 'Clawing…'
+          }
+          className="bg-transparent placeholder:text-muted-foreground/60"
+        />
+      </PromptInputBody>
+      <PromptInputFooter className="items-center p-1.5!">
+        <PromptInputSubmit
+          status={submitStatus}
+          disabled={!resolvedChatConfig.gatewayUrl}
+          onStop={abort}
+          className="ml-auto"
+        />
+      </PromptInputFooter>
+    </PromptInput>
+  );
 
   if (error) {
     return (
@@ -287,69 +319,68 @@ export default function AppHome() {
   }
 
   return (
-    <div className="relative flex h-full w-full max-w-2xl mx-auto flex-col">
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <Conversation className="h-full">
-          <ConversationContent className="px-4 sm:px-6 py-8">
-            {messages.map(message => {
-              const isThinking =
-                message.role === 'assistant' &&
-                message.status === 'streaming' &&
-                !message.content;
+    <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col">
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {isEmptyConversation ? (
+          <div className="flex h-full items-center px-4 pb-10 pt-4 sm:px-6">
+            <div className="w-full flex flex-col">
+              <div className='flex flex-col gap-6 items-start'>
+                <Clawpilot className='h-8 text-neutral-a7'/>
+                <div className="flex flex-col gap-2">
+                  {firstName ? (
+                    <p className="text-lg">Hi, {firstName}!</p>
+                  ) : null}
+                  <h1 className="text-3xl font-medium">
+                    Where should we start?
+                  </h1>
+                </div>
+              </div>
+              <div className="w-full py-8">{promptComposer}</div>
+            </div>
+          </div>
+        ) : (
+          <Conversation className="h-full">
+            <ConversationContent className="px-4 py-8 sm:px-6">
+              {messages.map(message => {
+                const isThinking =
+                  message.role === 'assistant' &&
+                  message.status === 'streaming' &&
+                  !message.content;
 
-              return (
-                <Message key={message.id} from={message.role}>
-                  <MessageContent>
-                    {isThinking ? (
-                      <div className="inline-flex items-center gap-1.5 text-muted-foreground leading-none py-1 overflow-visible">
-                        <span className="sr-only">Thinking</span>
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
-                      </div>
-                    ) : (
-                      <>
-                        {message.content && (
-                          <MessageResponse>{message.content}</MessageResponse>
-                        )}
-                      </>
-                    )}
-                  </MessageContent>
-                </Message>
-              );
-            })}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+                return (
+                  <Message key={message.id} from={message.role}>
+                    <MessageContent>
+                      {isThinking ? (
+                        <div className="inline-flex items-center gap-1.5 overflow-visible py-1 leading-none text-muted-foreground">
+                          <span className="sr-only">Thinking</span>
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:120ms]" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:240ms]" />
+                        </div>
+                      ) : (
+                        <>
+                          {message.content && (
+                            <MessageResponse>{message.content}</MessageResponse>
+                          )}
+                        </>
+                      )}
+                    </MessageContent>
+                  </Message>
+                );
+              })}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+        )}
       </div>
-      <QueuePill queue={queue} onRemove={removeFromQueue} />
-      <div className="shrink-0  backdrop-blur-xl px-4 sm:px-6 pb-6 pt-4">
-        <PromptInput
-          onSubmit={({ text }) => sendMessage(text)}
-          className="**:data-[slot=input-group]:rounded-lg **:data-[slot=input-group]:border-0  **:data-[slot=input-group]:bg-floated **:data-[slot=input-group]:shadow-fancy **:data-[slot=input-group]:dark:shadow-none"
-        >
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder={
-                resolvedChatConfig.gatewayUrl
-                  ? connected
-                    ? 'Message your assistant'
-                    : 'Message now. It will send when reconnected.'
-                  : 'Clawing…'
-              }
-              className="bg-transparent placeholder:text-muted-foreground/60"
-            />
-          </PromptInputBody>
-          <PromptInputFooter className="items-center p-1.5!">
-            <PromptInputSubmit
-              status={submitStatus}
-              disabled={!resolvedChatConfig.gatewayUrl}
-              onStop={abort}
-              className="ml-auto"
-            />
-          </PromptInputFooter>
-        </PromptInput>
-      </div>
+      {!isEmptyConversation ? (
+        <>
+          <QueuePill queue={queue} onRemove={removeFromQueue} />
+          <div className="shrink-0 px-4 pb-6 pt-4 backdrop-blur-xl sm:px-6">
+            {promptComposer}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
