@@ -64,3 +64,27 @@ export const setPendingPayload = (value: string | null) => {
 
   window.localStorage.setItem(PENDING_ONBOARDING_PAYLOAD_KEY, value);
 };
+
+export const providerKeyInfo: Record<
+string,
+{ label: string; placeholder: string; url: string; urlLabel: string }
+> = {
+anthropic: {
+  label: 'Anthropic API Key',
+  placeholder: 'sk-ant-...',
+  url: 'https://console.anthropic.com/settings/keys',
+  urlLabel: 'console.anthropic.com',
+},
+openai: {
+  label: 'OpenAI API Key',
+  placeholder: 'sk-...',
+  url: 'https://platform.openai.com/api-keys',
+  urlLabel: 'platform.openai.com',
+},
+gemini: {
+  label: 'Google AI API Key',
+  placeholder: 'AIza...',
+  url: 'https://aistudio.google.com/apikey',
+  urlLabel: 'aistudio.google.com',
+},
+};

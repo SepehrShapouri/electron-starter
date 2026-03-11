@@ -12,15 +12,17 @@ import {
   getErrorMessage,
   getPendingPayload,
   isPaidStatus,
+  providerKeyInfo,
   setPendingPayload,
   type KeySource,
 } from '@/features/onboarding/lib/utils';
+import useSignout from '@/hooks/use-signout';
 import { authApi } from '@/lib/auth-api';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import gsap from 'gsap';
-import { Info, Loader2 } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type OnboardingPageProps = {
@@ -47,6 +49,35 @@ export default function OnboardingPage({
     'idle' | 'launching' | 'failed'
   >('idle');
   const provisioningStarted = useRef(false);
+  const {  signout } = useSignout();
+  
+  useEffect(() => {
+    const tween = gsap.fromTo(
+      containerRef.current,
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }
+    );
+
+    return () => {
+      tween.kill();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!stepContentRef.current) {
+      return;
+    }
+
+    const tween = gsap.fromTo(
+      stepContentRef.current,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
+    );
+
+    return () => {
+      tween.kill();
+    };
+  }, [step]);
 
   const billingQuery = useQuery({
     queryKey: ['billing-status'],
@@ -68,16 +99,6 @@ export default function OnboardingPage({
       }
 
       window.location.href = data.url;
-    },
-    onError: error => setErrorMessage(getErrorMessage(error)),
-  });
-
-  const signOutMutation = useMutation({
-    mutationFn: authApi.signOut,
-    onSuccess: async () => {
-      setPendingPayload(null);
-      await queryClient.invalidateQueries({ queryKey: ['session'] });
-      navigate({ to: '/auth/welcome' });
     },
     onError: error => setErrorMessage(getErrorMessage(error)),
   });
@@ -109,34 +130,6 @@ export default function OnboardingPage({
   };
 
   useEffect(() => {
-    const tween = gsap.fromTo(
-      containerRef.current,
-      { opacity: 0, y: 14 },
-      { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }
-    );
-
-    return () => {
-      tween.kill();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!stepContentRef.current) {
-      return;
-    }
-
-    const tween = gsap.fromTo(
-      stepContentRef.current,
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
-    );
-
-    return () => {
-      tween.kill();
-    };
-  }, [step]);
-
-  useEffect(() => {
     if (checkoutStatus !== 'success' && !encryptedData) {
       return;
     }
@@ -159,30 +152,6 @@ export default function OnboardingPage({
   }, [checkoutStatus, encryptedData, isSubscribed]);
 
   const isByok = keySource === 'byok';
-
-  const providerKeyInfo: Record<
-    string,
-    { label: string; placeholder: string; url: string; urlLabel: string }
-  > = {
-    anthropic: {
-      label: 'Anthropic API Key',
-      placeholder: 'sk-ant-...',
-      url: 'https://console.anthropic.com/settings/keys',
-      urlLabel: 'console.anthropic.com',
-    },
-    openai: {
-      label: 'OpenAI API Key',
-      placeholder: 'sk-...',
-      url: 'https://platform.openai.com/api-keys',
-      urlLabel: 'platform.openai.com',
-    },
-    gemini: {
-      label: 'Google AI API Key',
-      placeholder: 'AIza...',
-      url: 'https://aistudio.google.com/apikey',
-      urlLabel: 'aistudio.google.com',
-    },
-  };
 
   const keyInfo = providerKeyInfo[selectedModel] ?? providerKeyInfo.anthropic;
 
@@ -348,7 +317,7 @@ export default function OnboardingPage({
           )}
           <Label
             className="text-sm font-medium text-foreground cursor-pointer hover:underline transition-all"
-            onClick={() => signOutMutation.mutate()}
+            onClick={() => signout()}
           >
             Logout
           </Label>
@@ -425,45 +394,6 @@ export default function OnboardingPage({
           />
         )}
       </div>
-
-      {/* {checkoutStatus === 'cancel' && (
-        <Alert variant="secondaryWarning" className="mb-4">
-          <Info />
-          <AlertTitle>Checkout canceled</AlertTitle>
-          <AlertDescription>
-            No worries. Your onboarding settings are still here.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {errorMessage && (
-        <Alert variant="secondaryDestructive" className="mt-4">
-          <Info />
-          <AlertTitle>Oops!</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="mt-5 flex items-center justify-between">
-        <div>
-          {step > 1 && (
-            <Button variant="outline" size="lg" onClick={handleBack}>
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-          )}
-        </div>
-        <div>
-          {step === 1 && (
-            <div className="flex items-center gap-2">
-              <Button size="lg" onClick={handleContinue}>
-                Continue
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </div> */}
     </div>
   );
 }
