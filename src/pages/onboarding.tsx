@@ -122,7 +122,7 @@ export default function OnboardingPage({
       await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       await queryClient.invalidateQueries({ queryKey: ['gateway-provision'] });
       setPendingPayload(null);
-      navigate({ to: '/launching' });
+      navigate({ to: '/app' });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setProvisionState('failed');

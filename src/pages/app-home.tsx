@@ -9,9 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Progress } from '@/components/ui/progress';
-import { authApi } from '@/lib/auth-api';
-import { useQuery } from '@tanstack/react-query';
+import { InstanceLaunching } from '@/components/app/instance-launching';
 import { useRouteContext } from '@tanstack/react-router';
 import { Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
@@ -49,32 +47,7 @@ export default function AppHome() {
   const { provisionQuery, chatConfig } = useGatewayProvision();
 
   const profile = provisionQuery.data ?? null;
-  const launchInstanceId = profile?.instanceId ?? null;
-
-  const instanceStatusQuery = useQuery({
-    queryKey: ['instance-status', launchInstanceId],
-    queryFn: () => authApi.getProvisionStatus(launchInstanceId as string),
-    enabled:
-      Boolean(launchInstanceId) &&
-      Boolean(profile) &&
-      profile?.status !== 'running',
-    refetchInterval: query => {
-      const taskStatus =
-        query.state.data?.taskStatus ?? query.state.data?.status;
-      return taskStatus === 'running' ? false : 10000;
-    },
-  });
-
-  const effectiveTaskStatus =
-    instanceStatusQuery.data?.taskStatus ?? profile?.status ?? 'provisioning';
-
-  useEffect(() => {
-    if (effectiveTaskStatus !== 'running') {
-      return;
-    }
-
-    void provisionQuery.refetch();
-  }, [effectiveTaskStatus, provisionQuery]);
+  const taskStatus = profile?.status ?? 'provisioning';
 
   const resolvedChatConfig = useMemo(
     () =>
@@ -126,7 +99,7 @@ export default function AppHome() {
   if (!profile && provisionQuery.isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <BarsSpinner size={20} />
       </div>
     );
   }
@@ -135,117 +108,34 @@ export default function AppHome() {
       provisionQuery.error instanceof Error
         ? provisionQuery.error.message
         : 'Failed to provision gateway.';
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
-          <div className="relative overflow-hidden rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/5 via-background to-background p-6 shadow-xl shadow-destructive/5">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-destructive/10 via-transparent to-transparent" />
-            <div className="relative flex flex-col items-center text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-destructive/20 mb-4">
-                <Unplug className="h-7 w-7 text-destructive" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Gateway Setup Failed
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
-                {message}
-              </p>
-              <Button
-                variant="outline"
-                className="gap-2 border-destructive/20 bg-background/50 hover:bg-destructive/5 hover:border-destructive/30"
-                onClick={() => provisionQuery.refetch()}
-                disabled={provisionQuery.isFetching}
-              >
-                {provisionQuery.isFetching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Try Again
-              </Button>
-            </div>
+        return     <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Clawpilot className="text-muted-foreground size-10" />
+          </EmptyMedia>
+          <Alert variant="secondaryDestructive">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+          <EmptyDescription>
+            We are having issues waking up your lobster, please try again or if
+            the issue persists, reach out to us.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <div className="flex flex-row justify-center gap-2">
+            <Button size="sm" onClick={()=>provisionQuery.refetch()} disabled={provisionQuery.isFetching}>
+              Try again
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href="mailto:support@clawpilot.ai">Contact us</a>
+            </Button>
           </div>
-        </div>
-      </div>
-    );
+        </EmptyContent>
+      </Empty>
   }
 
-  if (profile && effectiveTaskStatus !== 'running') {
-    const progressValue =
-      effectiveTaskStatus === 'provisioning'
-        ? 10
-        : effectiveTaskStatus === 'pending'
-          ? 65
-          : 10;
-    const statusLabel =
-      effectiveTaskStatus === 'provisioning'
-        ? 'Allocating compute'
-        : effectiveTaskStatus === 'pending'
-          ? 'Finalizing services'
-          : 'Preparing instance';
-
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-xl border border-border bg-background p-6">
-          <p className="text-xl font-semibold text-foreground">
-            Launching your agent...
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Payment is confirmed. We are preparing your runtime.
-          </p>
-          <div className="mt-6 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Provisioning status</span>
-              <span className="font-medium text-foreground">{statusLabel}</span>
-            </div>
-            <Progress value={progressValue} />
-            <p className="text-xs text-muted-foreground">
-              This usually takes less than a minute.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (instanceStatusQuery.error) {
-    const message =
-      instanceStatusQuery.error instanceof Error
-        ? instanceStatusQuery.error.message
-        : 'Failed to check instance status.';
-
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
-          <div className="relative overflow-hidden rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/5 via-background to-background p-6 shadow-xl shadow-destructive/5">
-            <div className="relative flex flex-col items-center text-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-destructive/20">
-                <Unplug className="h-7 w-7 text-destructive" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-foreground">
-                Launch Status Unavailable
-              </h3>
-              <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                {message}
-              </p>
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => instanceStatusQuery.refetch()}
-                disabled={instanceStatusQuery.isFetching}
-              >
-                {instanceStatusQuery.isFetching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Try Again
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (profile && taskStatus !== 'running') {
+    return <InstanceLaunching status={taskStatus} />;
   }
 
   const submitStatus =

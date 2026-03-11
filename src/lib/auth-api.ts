@@ -146,6 +146,13 @@ export const authApi = {
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
       }),
+  relaunchGateway: () =>
+    apiClient
+      .post<GatewayProvision>('/api/v1/infra/provision/relaunch')
+      .then(response => response.data)
+      .catch(error => {
+        throw new Error(getApiErrorMessage(error));
+      }),
   getOnboarding: () =>
     apiClient
       .get<OnboardingProfile>('/api/v1/infra/onboarding')
