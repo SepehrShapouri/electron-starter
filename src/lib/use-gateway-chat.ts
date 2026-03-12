@@ -23,6 +23,7 @@ export type QueueItem = GatewayQueueItem;
 export type GatewayChatStatus =
   | 'idle'
   | 'connecting'
+  | 'reconnecting'
   | 'ready'
   | 'streaming'
   | 'error';
@@ -33,6 +34,50 @@ export type GatewayChatConfig = GatewayConnectionConfig & {
 
 const EMPTY_CHAT_MESSAGES: GatewayChatMessage[] = [];
 const EMPTY_GATEWAY_QUEUE: GatewayQueueItem[] = [];
+
+export function getGatewayChatStatus(params: {
+  connectionStatus:
+    | 'idle'
+    | 'connecting'
+    | 'authenticating'
+    | 'ready'
+    | 'degraded'
+    | 'reconnecting'
+    | 'auth_failed'
+    | 'error';
+  currentRunId: string | null;
+}): GatewayChatStatus {
+  if (
+    params.connectionStatus === 'error' ||
+    params.connectionStatus === 'auth_failed'
+  ) {
+    return 'error';
+  }
+
+  if (params.currentRunId) {
+    return 'streaming';
+  }
+
+  if (
+    params.connectionStatus === 'connecting' ||
+    params.connectionStatus === 'authenticating'
+  ) {
+    return 'connecting';
+  }
+
+  if (params.connectionStatus === 'reconnecting') {
+    return 'reconnecting';
+  }
+
+  if (
+    params.connectionStatus === 'ready' ||
+    params.connectionStatus === 'degraded'
+  ) {
+    return 'ready';
+  }
+
+  return 'idle';
+}
 
 export function useGatewayChat(config: GatewayChatConfig) {
   const manager = useMemo(() => getGatewaySessionManager(), []);
@@ -252,7 +297,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
   }, [actions, config, currentRunId, manager, resolvedSessionKey]);
 
   const connect = useCallback(() => {
-    manager.start(config);
+    manager.start(config, { allowAuthRecovery: true });
   }, [config, manager]);
 
   const disconnect = useCallback(() => {
@@ -260,27 +305,10 @@ export function useGatewayChat(config: GatewayChatConfig) {
   }, [manager]);
 
   const status = useMemo<GatewayChatStatus>(() => {
-    if (connection.status === 'error') {
-      return 'error';
-    }
-
-    if (currentRunId) {
-      return 'streaming';
-    }
-
-    if (
-      connection.status === 'connecting' ||
-      connection.status === 'authenticating' ||
-      connection.status === 'reconnecting'
-    ) {
-      return 'connecting';
-    }
-
-    if (connection.status === 'ready' || connection.status === 'degraded') {
-      return 'ready';
-    }
-
-    return 'idle';
+    return getGatewayChatStatus({
+      connectionStatus: connection.status,
+      currentRunId,
+    });
   }, [connection.status, currentRunId]);
 
   const connected =

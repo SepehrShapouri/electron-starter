@@ -226,7 +226,7 @@ function QueueCard({
       className="group"
     >
       <div
-        className="flex items-center gap-2 rounded-md bg-floated backdrop-blur-sm px-3"
+        className="flex items-center gap-2 rounded-md bg-floated-blur backdrop-blur-sm px-3 shadow-fancy"
         style={{ height: ITEM_HEIGHT }}
       >
         <span

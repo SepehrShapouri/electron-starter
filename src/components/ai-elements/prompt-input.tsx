@@ -64,6 +64,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { BarsSpinner } from '../bars-spinner';
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string })[];
   add: (files: File[] | FileList) => void;
@@ -982,7 +983,7 @@ export const PromptInputSubmit = ({
   let Icon = <IconArrowUp className="size-4" />;
 
   if (status === 'submitted') {
-    Icon = <Loader2Icon className="size-4 animate-spin" />;
+    Icon = <BarsSpinner size={16}/>;
   } else if (status === 'streaming') {
     Icon = <SquareIcon className="size-4" />;
   } else if (status === 'error') {

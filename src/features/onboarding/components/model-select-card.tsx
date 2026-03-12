@@ -53,7 +53,7 @@ export function ModelSelectCard({
             aria-pressed={isSelected}
             className={`relative flex h-full w-full cursor-pointer items-start gap-4 rounded-lg p-4 text-left transition-colors ease-in active:scale-99 ${
               isSelected
-                ? 'bg-neutral-a4'
+                ? 'bg-neutral-a4 border border-transparent'
                 : 'bg-transparent hover:bg-neutral-a3 border'
             }`}
           >

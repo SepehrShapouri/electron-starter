@@ -1,4 +1,8 @@
-import type { GatewayEventFrame, GatewayHelloOk } from '@/lib/gateway-client';
+import type {
+  GatewayEventFrame,
+  GatewayHandshakeFailure,
+  GatewayHelloOk,
+} from '@/lib/gateway-client';
 import { GatewayClient } from '@/lib/gateway-client';
 
 import { normalizeChatEventPayload } from './chat';
@@ -8,7 +12,7 @@ import {
   normalizeGatewayConfig,
   type GatewayConnectionConfig,
 } from './config';
-import { gatewayStore } from './store';
+import { gatewayStore, type GatewayFailureKind } from './store';
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -39,6 +43,36 @@ function isRestartReason(reason?: string | null) {
   );
 }
 
+function isAuthFailureReason(reason?: string | null) {
+  const normalized = reason?.trim().toLowerCase() ?? '';
+  if (!normalized) {
+    return false;
+  }
+
+  return [
+    'auth',
+    'token',
+    'credential',
+    'password',
+    'pair',
+    'paired',
+    'device',
+    'identity',
+    'scope',
+    'role',
+    'unauthorized',
+  ].some(fragment => normalized.includes(fragment));
+}
+
+type FailureResolution = {
+  status: 'idle' | 'reconnecting' | 'auth_failed' | 'error';
+  failureKind: GatewayFailureKind;
+  error: string | null;
+  disconnectReason: string | null;
+  closeCode: number | null;
+  shouldReconnect: boolean;
+};
+
 function nextReconnectDelay(attempt: number) {
   const baseDelay = Math.min(1000 * 2 ** Math.max(attempt - 1, 0), 12_000);
   const jitter = Math.floor(Math.random() * 350);
@@ -49,13 +83,19 @@ export class GatewaySessionManager {
   private client: GatewayClient | null = null;
   private config: GatewayConnectionConfig | null = null;
   private desired = false;
+  private authRecoveryRequired = false;
+  private authFailureError: Error | null = null;
   private reconnectTimer: number | null = null;
   private reconnectAttempt = 0;
   private hello: GatewayHelloOk | null = null;
   private readyDeferred: Deferred<GatewayHelloOk> | null = null;
   private listeners = new Set<(event: GatewayEventFrame) => void>();
+  private pendingHandshakeFailure: GatewayHandshakeFailure | null = null;
 
-  start(config: GatewayConnectionConfig) {
+  start(
+    config: GatewayConnectionConfig,
+    options?: { allowAuthRecovery?: boolean }
+  ) {
     if (!hasGatewayConfig(config)) {
       this.stop();
       return;
@@ -64,6 +104,17 @@ export class GatewaySessionManager {
     const nextConfig = normalizeGatewayConfig(config);
     const connectionStatus = gatewayStore.getState().connection.status;
     const sameConfig = areGatewayConfigsEqual(this.config, nextConfig);
+    const allowAuthRecovery =
+      options?.allowAuthRecovery === true || !sameConfig;
+
+    if (allowAuthRecovery) {
+      this.authRecoveryRequired = false;
+      this.authFailureError = null;
+    } else if (this.authRecoveryRequired) {
+      this.config = nextConfig;
+      gatewayStore.getState().actions.configure(nextConfig);
+      return;
+    }
 
     if (
       sameConfig &&
@@ -85,11 +136,14 @@ export class GatewaySessionManager {
     this.config = nextConfig;
     this.desired = true;
     gatewayStore.getState().actions.configure(nextConfig);
-    void this.ensureReady();
+    void this.ensureReady().catch(() => {});
   }
 
   stop(clearConfig = true) {
     this.desired = false;
+    this.authRecoveryRequired = false;
+    this.authFailureError = null;
+    this.pendingHandshakeFailure = null;
     this.clearReconnectTimer();
     this.rejectReady(new Error('Gateway session stopped'));
     this.client?.disconnect();
@@ -105,7 +159,13 @@ export class GatewaySessionManager {
       return;
     }
 
-    gatewayStore.getState().actions.setConnectionStatus('idle');
+    gatewayStore.getState().actions.setConnectionStatus('idle', {
+      reconnectAttempt: 0,
+      closeCode: null,
+      failureKind: null,
+      disconnectReason: null,
+      error: null,
+    });
   }
 
   getCurrentConfig() {
@@ -119,9 +179,18 @@ export class GatewaySessionManager {
     };
   }
 
-  async ensureReady(config?: GatewayConnectionConfig) {
+  async ensureReady(
+    config?: GatewayConnectionConfig,
+    options?: { allowAuthRecovery?: boolean }
+  ) {
     if (config) {
-      this.start(config);
+      this.start(config, options);
+    }
+
+    if (this.authRecoveryRequired && !options?.allowAuthRecovery) {
+      throw (
+        this.authFailureError ?? new Error('Gateway authentication required')
+      );
     }
 
     if (!this.config || !this.desired) {
@@ -163,11 +232,12 @@ export class GatewaySessionManager {
   }
 
   private openConnection() {
-    if (!this.config || this.client) {
+    if (!this.config || this.client || this.authRecoveryRequired) {
       return;
     }
 
     this.clearReconnectTimer();
+    this.pendingHandshakeFailure = null;
     this.readyDeferred = createDeferred<GatewayHelloOk>();
     gatewayStore
       .getState()
@@ -175,6 +245,10 @@ export class GatewaySessionManager {
         this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting',
         {
           reconnectAttempt: this.reconnectAttempt,
+          closeCode: null,
+          failureKind: null,
+          disconnectReason: null,
+          error: null,
         }
       );
 
@@ -182,8 +256,20 @@ export class GatewaySessionManager {
       url: this.config.gatewayUrl,
       token: this.config.token,
       password: this.config.password,
+      onAuthenticating: () => {
+        gatewayStore.getState().actions.setConnectionStatus('authenticating', {
+          reconnectAttempt: this.reconnectAttempt,
+          closeCode: null,
+          failureKind: null,
+          disconnectReason: null,
+          error: null,
+        });
+      },
       onHello: hello => {
         this.hello = hello;
+        this.authRecoveryRequired = false;
+        this.authFailureError = null;
+        this.pendingHandshakeFailure = null;
         this.reconnectAttempt = 0;
         gatewayStore.getState().actions.applyHello(hello);
         gatewayStore.getState().actions.markRecovered();
@@ -195,47 +281,139 @@ export class GatewaySessionManager {
       onGap: info => {
         gatewayStore.getState().actions.markGapDetected(info);
       },
-      onClose: ({ reason }) => {
+      onHandshakeFailure: failure => {
+        this.pendingHandshakeFailure = failure;
+      },
+      onClose: ({ code, reason }) => {
         if (this.client !== client) return;
         this.client = null;
         this.hello = null;
-        this.rejectReady(new Error(reason || 'Gateway disconnected'));
 
-        if (reason) {
-          if (isRestartReason(reason)) {
-            gatewayStore.getState().actions.noteShutdown(reason);
-          }
+        const resolution = this.resolveFailure({
+          code,
+          reason,
+          handshakeFailure: this.pendingHandshakeFailure,
+        });
+        this.pendingHandshakeFailure = null;
+        this.rejectReady(
+          new Error(
+            resolution.error ?? reason ?? 'Gateway disconnected'
+          )
+        );
+
+        if (resolution.failureKind === 'auth') {
+          this.authRecoveryRequired = true;
+          this.authFailureError = new Error(
+            resolution.error ?? 'Gateway authentication required'
+          );
+          this.desired = false;
+        }
+
+        if (resolution.failureKind === 'restart') {
           gatewayStore
             .getState()
-            .actions.setConnectionStatus(
-              this.desired ? 'reconnecting' : 'idle',
-              {
-                disconnectReason: reason,
-              }
-            );
-        } else {
-          gatewayStore
-            .getState()
-            .actions.setConnectionStatus(
-              this.desired ? 'reconnecting' : 'idle'
+            .actions.noteShutdown(
+              reason || 'Gateway restart in progress'
             );
         }
 
-        if (this.desired && this.config) {
+        gatewayStore.getState().actions.setConnectionStatus(
+          resolution.status,
+          {
+            reconnectAttempt: this.reconnectAttempt,
+            closeCode: resolution.closeCode,
+            failureKind: resolution.failureKind,
+            disconnectReason: resolution.disconnectReason,
+            error: resolution.error,
+          }
+        );
+
+        if (resolution.shouldReconnect && this.desired && this.config) {
           this.scheduleReconnect();
+        } else {
+          this.clearReconnectTimer();
         }
       },
       onError: error => {
-        gatewayStore.getState().actions.markGatewayError(error.message);
-        gatewayStore.getState().actions.setConnectionStatus('error', {
-          error: error.message,
-          reconnectAttempt: this.reconnectAttempt,
-        });
+        console.warn('[gateway] websocket error', error);
       },
     });
 
     this.client = client;
     client.connect();
+  }
+
+  private resolveFailure(params: {
+    code: number;
+    reason: string;
+    handshakeFailure: GatewayHandshakeFailure | null;
+  }): FailureResolution {
+    if (!this.desired) {
+      return {
+        status: 'idle',
+        failureKind: null,
+        error: null,
+        disconnectReason: null,
+        closeCode: null,
+        shouldReconnect: false,
+      };
+    }
+
+    if (params.code === 1008) {
+      return {
+        status: 'auth_failed',
+        failureKind: 'auth',
+        error: params.reason || 'Gateway authentication failed',
+        disconnectReason: params.reason || 'Gateway authentication failed',
+        closeCode: params.code,
+        shouldReconnect: false,
+      };
+    }
+
+    if (
+      params.handshakeFailure?.kind === 'connect_rejected' &&
+      isAuthFailureReason(params.handshakeFailure.message)
+    ) {
+      return {
+        status: 'auth_failed',
+        failureKind: 'auth',
+        error: params.handshakeFailure.message,
+        disconnectReason: params.handshakeFailure.message,
+        closeCode: params.code || null,
+        shouldReconnect: false,
+      };
+    }
+
+    if (params.handshakeFailure) {
+      return {
+        status: 'error',
+        failureKind: 'handshake',
+        error: params.handshakeFailure.message,
+        disconnectReason: params.handshakeFailure.message,
+        closeCode: params.code || null,
+        shouldReconnect: false,
+      };
+    }
+
+    if (params.code === 1012 || isRestartReason(params.reason)) {
+      return {
+        status: 'reconnecting',
+        failureKind: 'restart',
+        error: null,
+        disconnectReason: params.reason || 'Gateway restarting',
+        closeCode: params.code,
+        shouldReconnect: true,
+      };
+    }
+
+    return {
+      status: 'reconnecting',
+      failureKind: 'network',
+      error: null,
+      disconnectReason: params.reason || 'Gateway disconnected',
+      closeCode: params.code || null,
+      shouldReconnect: true,
+    };
   }
 
   private handleEvent(event: GatewayEventFrame) {

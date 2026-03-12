@@ -111,4 +111,22 @@ describe('gatewayStore chat events', () => {
       })
     );
   });
+
+  it('keeps queued messages when the connection enters auth_failed', () => {
+    const { actions } = gatewayStore.getState();
+
+    const queued = actions.queueChatMessage('main', 'Retry later');
+    actions.setConnectionStatus('auth_failed', {
+      closeCode: 1008,
+      failureKind: 'auth',
+      disconnectReason: 'pairing required',
+      error: 'pairing required',
+    });
+
+    const state = gatewayStore.getState();
+    expect(state.connection.status).toBe('auth_failed');
+    expect(state.health.lastFailureKind).toBe('auth');
+    expect(state.health.lastCloseCode).toBe(1008);
+    expect(state.chat.queuesBySession.main).toEqual([queued]);
+  });
 });

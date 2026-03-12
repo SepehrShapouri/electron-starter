@@ -26,6 +26,25 @@ export type GatewayHelloOk = {
   };
 };
 
+export type GatewayHandshakeFailureKind =
+  | 'challenge_timeout'
+  | 'invalid_challenge'
+  | 'connect_rejected';
+
+export type GatewayHandshakeFailure = {
+  kind: GatewayHandshakeFailureKind;
+  message: string;
+};
+
+export type GatewayClientDeviceAuthDeps = {
+  buildDeviceAuthPayload: typeof import('./device-auth-payload').buildDeviceAuthPayload;
+  clearDeviceAuthToken: typeof import('./device-auth').clearDeviceAuthToken;
+  loadDeviceAuthToken: typeof import('./device-auth').loadDeviceAuthToken;
+  loadOrCreateDeviceIdentity: typeof import('./device-identity').loadOrCreateDeviceIdentity;
+  signDevicePayload: typeof import('./device-identity').signDevicePayload;
+  storeDeviceAuthToken: typeof import('./device-auth').storeDeviceAuthToken;
+};
+
 type Pending = {
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
@@ -36,10 +55,45 @@ export type GatewayClientOptions = {
   token?: string;
   password?: string;
   onHello?: (hello: GatewayHelloOk) => void;
+  onAuthenticating?: () => void;
   onEvent?: (evt: GatewayEventFrame) => void;
+  onHandshakeFailure?: (info: GatewayHandshakeFailure) => void;
   onClose?: (info: { code: number; reason: string }) => void;
   onGap?: (info: { expected: number; received: number }) => void;
   onError?: (err: Error) => void;
+};
+
+const CONNECT_FAILED_CLOSE_CODE = 4008;
+const CONNECT_CHALLENGE_TIMEOUT_MS = 2_000;
+const GATEWAY_CLIENT_ID = 'openclaw-control-ui';
+const GATEWAY_CLIENT_MODE = 'webchat';
+const GATEWAY_CLIENT_VERSION = '0.1';
+const GATEWAY_OPERATOR_ROLE = 'operator';
+const GATEWAY_OPERATOR_SCOPES = [
+  'operator.admin',
+  'operator.approvals',
+  'operator.pairing',
+] as const;
+
+function truncateCloseReason(reason: string) {
+  return reason.slice(0, 123);
+}
+
+export const gatewayDeviceAuthDeps = {
+  load: async (): Promise<GatewayClientDeviceAuthDeps> => {
+    const deviceIdentity = await import('./device-identity');
+    const deviceAuthPayload = await import('./device-auth-payload');
+    const deviceAuth = await import('./device-auth');
+
+    return {
+      buildDeviceAuthPayload: deviceAuthPayload.buildDeviceAuthPayload,
+      clearDeviceAuthToken: deviceAuth.clearDeviceAuthToken,
+      loadDeviceAuthToken: deviceAuth.loadDeviceAuthToken,
+      loadOrCreateDeviceIdentity: deviceIdentity.loadOrCreateDeviceIdentity,
+      signDevicePayload: deviceIdentity.signDevicePayload,
+      storeDeviceAuthToken: deviceAuth.storeDeviceAuthToken,
+    };
+  },
 };
 
 export class GatewayClient {
@@ -59,12 +113,17 @@ export class GatewayClient {
   connect() {
     if (this.ws) return;
     this.lastSeq = null;
+    this.connectNonce = null;
+    this.connectSent = false;
     this.ws = new WebSocket(this.opts.url);
     this.ws.onopen = () => this.queueConnect();
     this.ws.onmessage = ev => this.handleMessage(String(ev.data ?? ''));
     this.ws.onclose = ev => {
+      this.clearConnectTimer();
       this.flushPending(new Error('gateway disconnected'));
       this.ws = null;
+      this.connectNonce = null;
+      this.connectSent = false;
       this.opts.onClose?.({ code: ev.code, reason: String(ev.reason ?? '') });
     };
     this.ws.onerror = () => {
@@ -73,9 +132,12 @@ export class GatewayClient {
   }
 
   disconnect() {
+    this.clearConnectTimer();
     this.ws?.close();
     this.ws = null;
     this.lastSeq = null;
+    this.connectNonce = null;
+    this.connectSent = false;
     this.flushPending(new Error('gateway disconnected'));
   }
 
@@ -101,15 +163,22 @@ export class GatewayClient {
 
   private async sendConnect() {
     if (this.connectSent) return;
-    this.connectSent = true;
-    if (this.connectTimer !== null) {
-      window.clearTimeout(this.connectTimer);
-      this.connectTimer = null;
+    const nonce = this.connectNonce?.trim();
+    if (!nonce) {
+      this.handleHandshakeFailure(
+        'invalid_challenge',
+        'Gateway challenge nonce missing'
+      );
+      return;
     }
 
+    this.connectSent = true;
+    this.clearConnectTimer();
+    this.opts.onAuthenticating?.();
+
     const isSecureContext = typeof crypto !== 'undefined' && !!crypto.subtle;
-    const role = 'operator';
-    const scopes = ['operator.admin', 'operator.approvals', 'operator.pairing'];
+    const role = GATEWAY_OPERATOR_ROLE;
+    const scopes = [...GATEWAY_OPERATOR_SCOPES];
 
     let device:
       | {
@@ -125,10 +194,12 @@ export class GatewayClient {
     let canFallbackToShared = false;
 
     if (isSecureContext) {
-      const { loadOrCreateDeviceIdentity, signDevicePayload } =
-        await import('./device-identity');
-      const { buildDeviceAuthPayload } = await import('./device-auth-payload');
-      const { loadDeviceAuthToken } = await import('./device-auth');
+      const {
+        buildDeviceAuthPayload,
+        loadDeviceAuthToken,
+        loadOrCreateDeviceIdentity,
+        signDevicePayload,
+      } = await gatewayDeviceAuthDeps.load();
 
       const deviceIdentity = await loadOrCreateDeviceIdentity();
       const storedToken = loadDeviceAuthToken({
@@ -139,11 +210,10 @@ export class GatewayClient {
       canFallbackToShared = Boolean(storedToken && this.opts.token);
 
       const signedAtMs = Date.now();
-      const nonce = this.connectNonce ?? undefined;
       const payload = buildDeviceAuthPayload({
         deviceId: deviceIdentity.deviceId,
-        clientId: 'openclaw-control-ui',
-        clientMode: 'webchat',
+        clientId: GATEWAY_CLIENT_ID,
+        clientMode: GATEWAY_CLIENT_MODE,
         role,
         scopes,
         signedAtMs,
@@ -172,12 +242,12 @@ export class GatewayClient {
       minProtocol: 3,
       maxProtocol: 3,
       client: {
-        id: 'openclaw-control-ui',
-        version: '0.1',
+        id: GATEWAY_CLIENT_ID,
+        version: GATEWAY_CLIENT_VERSION,
         platform: navigator.platform ?? 'web',
-        mode: 'webchat',
+        mode: GATEWAY_CLIENT_MODE,
       },
-      role: 'operator',
+      role,
       scopes,
       device,
       auth,
@@ -188,9 +258,8 @@ export class GatewayClient {
     void this.request<GatewayHelloOk>('connect', params)
       .then(async hello => {
         if (hello?.auth?.deviceToken && isSecureContext) {
-          const { loadOrCreateDeviceIdentity } =
-            await import('./device-identity');
-          const { storeDeviceAuthToken } = await import('./device-auth');
+          const { loadOrCreateDeviceIdentity, storeDeviceAuthToken } =
+            await gatewayDeviceAuthDeps.load();
           const identity = await loadOrCreateDeviceIdentity();
           storeDeviceAuthToken({
             deviceId: identity.deviceId,
@@ -203,16 +272,15 @@ export class GatewayClient {
       })
       .catch(async err => {
         if (canFallbackToShared && isSecureContext) {
-          const { loadOrCreateDeviceIdentity } =
-            await import('./device-identity');
-          const { clearDeviceAuthToken } = await import('./device-auth');
+          const { clearDeviceAuthToken, loadOrCreateDeviceIdentity } =
+            await gatewayDeviceAuthDeps.load();
           const identity = await loadOrCreateDeviceIdentity();
           clearDeviceAuthToken({ deviceId: identity.deviceId, role });
         }
-        this.opts.onError?.(
-          err instanceof Error ? err : new Error(String(err))
-        );
-        this.ws?.close(4008, 'connect failed');
+        const error =
+          err instanceof Error ? err : new Error(String(err));
+        this.opts.onError?.(error);
+        this.handleHandshakeFailure('connect_rejected', error.message);
       });
   }
 
@@ -229,10 +297,19 @@ export class GatewayClient {
       const evt = parsed as GatewayEventFrame;
       if (evt.event === 'connect.challenge') {
         const payload = evt.payload as { nonce?: unknown } | undefined;
-        if (payload && typeof payload.nonce === 'string') {
-          this.connectNonce = payload.nonce;
-          void this.sendConnect();
+        const nonce =
+          payload && typeof payload.nonce === 'string'
+            ? payload.nonce.trim()
+            : '';
+        if (!nonce) {
+          this.handleHandshakeFailure(
+            'invalid_challenge',
+            'Gateway challenge nonce missing'
+          );
+          return;
         }
+        this.connectNonce = nonce;
+        void this.sendConnect();
         return;
       }
       if (typeof evt.seq === 'number') {
@@ -258,9 +335,31 @@ export class GatewayClient {
   private queueConnect() {
     this.connectNonce = null;
     this.connectSent = false;
-    if (this.connectTimer !== null) window.clearTimeout(this.connectTimer);
+    this.clearConnectTimer();
     this.connectTimer = window.setTimeout(() => {
-      void this.sendConnect();
-    }, 750);
+      if (this.connectSent || this.ws?.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      this.handleHandshakeFailure(
+        'challenge_timeout',
+        'Gateway challenge timeout'
+      );
+    }, CONNECT_CHALLENGE_TIMEOUT_MS);
+  }
+
+  private clearConnectTimer() {
+    if (this.connectTimer !== null) {
+      window.clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
+  }
+
+  private handleHandshakeFailure(
+    kind: GatewayHandshakeFailureKind,
+    message: string
+  ) {
+    this.opts.onHandshakeFailure?.({ kind, message });
+    this.clearConnectTimer();
+    this.ws?.close(CONNECT_FAILED_CLOSE_CODE, truncateCloseReason(message));
   }
 }

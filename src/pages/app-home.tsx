@@ -13,7 +13,6 @@ import { InstanceLaunching } from '@/components/app/instance-launching';
 import { InstanceSetup } from '@/components/app/instance-setup';
 import { ApiError } from '@/lib/axios';
 import { useRouteContext } from '@tanstack/react-router';
-import { Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import {
   Conversation,
@@ -41,9 +40,49 @@ import {
 import { QueuePill } from '../components/app/queue-pill';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
-import { useGatewayChatSession } from '../lib/gateway/store';
+import {
+  useGatewayChatSession,
+  useGatewayConnection,
+} from '../lib/gateway/store';
 import { useContextUsage } from '../lib/use-context-usage';
 import { BarsSpinner } from '@/components/bars-spinner';
+
+export function getGatewayErrorContent(isAuthFailure: boolean) {
+  if (isAuthFailure) {
+    return {
+      title: 'Authentication required',
+      description:
+        'Your gateway credentials or device pairing were rejected. Refresh access or repair the device, then reconnect.',
+      actionLabel: 'Reconnect',
+    };
+  }
+
+  return {
+    title: 'Connection issue',
+    description:
+      'We are having issues waking up your lobster, please try again or if the issue persists, reach out to us.',
+    actionLabel: 'Try again',
+  };
+}
+
+export function shouldShowGatewayWakeState(params: {
+  status:
+    | 'idle'
+    | 'connecting'
+    | 'reconnecting'
+    | 'ready'
+    | 'streaming'
+    | 'error';
+  historyLoaded: boolean;
+  isEmptyConversation: boolean;
+}) {
+  return (
+    params.status === 'connecting' &&
+    !params.historyLoaded &&
+    params.isEmptyConversation
+  );
+}
+
 export default function AppHome() {
   const { session } = useRouteContext({ from: '/app' });
   const { provisionQuery, chatConfig } = useGatewayProvision();
@@ -68,24 +107,27 @@ export default function AppHome() {
     connected,
     connect,
     messages,
-    disconnect,
     sendMessage,
     removeFromQueue,
     abort,
     loadHistory,
     historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
+  const gatewayConnection = useGatewayConnection();
 
   const { sessionKey: resolvedSessionKey } = useGatewayChatSession();
   const contextUsage = useContextUsage(chatConfig, resolvedSessionKey);
   const reconnect = () => {
-    disconnect();
     connect();
   };
+  const isAuthFailure =
+    gatewayConnection.status === 'auth_failed' ||
+    gatewayConnection.lastFailureKind === 'auth';
+  const gatewayErrorContent = getGatewayErrorContent(isAuthFailure);
 
   useEffect(() => {
     if (!resolvedChatConfig.gatewayUrl || connected) return;
-    if (status === 'idle' || status === 'error') {
+    if (status === 'idle') {
       connect();
     }
   }, [resolvedChatConfig.gatewayUrl, connected, status, connect]);
@@ -152,7 +194,7 @@ export default function AppHome() {
   const submitStatus =
     status === 'streaming'
       ? 'streaming'
-      : status === 'connecting'
+      : status === 'connecting' || status === 'reconnecting'
         ? 'submitted'
         : status === 'error'
           ? 'error'
@@ -201,25 +243,23 @@ export default function AppHome() {
     </PromptInput>
   );
 
-  if (error) {
+  if (status === 'error' && error) {
     return (
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <Clawpilot className="text-muted-foreground size-10" />
           </EmptyMedia>
+          <EmptyTitle>{gatewayErrorContent.title}</EmptyTitle>
           <Alert variant="secondaryDestructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <EmptyDescription>
-            We are having issues waking up your lobster, please try again or if
-            the issue persists, reach out to us.
-          </EmptyDescription>
+          <EmptyDescription>{gatewayErrorContent.description}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <div className="flex flex-row justify-center gap-2">
             <Button size="sm" onClick={reconnect}>
-              Try again
+              {gatewayErrorContent.actionLabel}
             </Button>
             <Button size="sm" variant="outline" asChild>
               <a href="mailto:support@clawpilot.ai">Contact us</a>
@@ -230,7 +270,13 @@ export default function AppHome() {
     );
   }
 
-  if (status === 'connecting') {
+  if (
+    shouldShowGatewayWakeState({
+      status,
+      historyLoaded,
+      isEmptyConversation,
+    })
+  ) {
     return (
       <Empty>
         <EmptyHeader>

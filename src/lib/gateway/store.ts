@@ -24,7 +24,15 @@ export type GatewayConnectionStatus =
   | 'ready'
   | 'degraded'
   | 'reconnecting'
+  | 'auth_failed'
   | 'error';
+
+export type GatewayFailureKind =
+  | 'auth'
+  | 'restart'
+  | 'network'
+  | 'handshake'
+  | null;
 
 type GatewayCapabilitiesState = {
   methods: string[];
@@ -44,6 +52,8 @@ type GatewayHealthState = {
   gapDetected: boolean;
   stale: boolean;
   reconnectAttempt: number;
+  lastCloseCode: number | null;
+  lastFailureKind: GatewayFailureKind;
   lastDisconnectReason: string | null;
   lastError: string | null;
 };
@@ -67,13 +77,15 @@ type GatewayStoreActions = {
   configure: (config: GatewayConnectionConfig | null) => void;
   resetRuntime: () => void;
   setConnectionStatus: (
-    status: GatewayConnectionStatus,
-    options?: {
-      reconnectAttempt?: number;
-      disconnectReason?: string | null;
-      error?: string | null;
-    }
-  ) => void;
+      status: GatewayConnectionStatus,
+      options?: {
+        reconnectAttempt?: number;
+        closeCode?: number | null;
+        failureKind?: GatewayFailureKind;
+        disconnectReason?: string | null;
+        error?: string | null;
+      }
+    ) => void;
   markGatewayError: (error: string | null) => void;
   applyHello: (hello: GatewayHelloOk) => void;
   noteEvent: (seq?: number) => void;
@@ -212,6 +224,8 @@ function initialState(): Omit<GatewayStoreState, 'actions'> {
       gapDetected: false,
       stale: false,
       reconnectAttempt: 0,
+      lastCloseCode: null,
+      lastFailureKind: null,
       lastDisconnectReason: null,
       lastError: null,
     },
@@ -253,6 +267,14 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
             typeof options?.reconnectAttempt === 'number'
               ? options.reconnectAttempt
               : state.health.reconnectAttempt,
+          lastCloseCode:
+            options?.closeCode !== undefined
+              ? options.closeCode
+              : state.health.lastCloseCode,
+          lastFailureKind:
+            options?.failureKind !== undefined
+              ? options.failureKind
+              : state.health.lastFailureKind,
           lastDisconnectReason:
             options?.disconnectReason !== undefined
               ? options.disconnectReason
@@ -295,6 +317,8 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
           ...state.health,
           lastHelloAt: Date.now(),
           lastError: null,
+          lastCloseCode: null,
+          lastFailureKind: null,
           gapDetected: false,
           stale: false,
           reconnectAttempt: 0,
@@ -772,6 +796,8 @@ export function useGatewayConnection() {
       status: state.connection.status,
       readyAt: state.connection.readyAt,
       lastError: state.health.lastError,
+      lastCloseCode: state.health.lastCloseCode,
+      lastFailureKind: state.health.lastFailureKind,
       stale: state.health.stale,
       restartExpected: state.system.restartExpected,
       reconnectAttempt: state.health.reconnectAttempt,

@@ -14,8 +14,64 @@ import { Outlet } from '@tanstack/react-router';
 import { NavUser } from '../nav-user';
 import { AppSidebar } from '../ui/app-sidebar';
 import { Badge } from '../ui/badge';
-import { Loader, Loader2 } from 'lucide-react';
 import { BarsSpinner } from '../bars-spinner';
+
+export function getGatewayBadgeState(connection: {
+  status:
+    | 'idle'
+    | 'connecting'
+    | 'authenticating'
+    | 'ready'
+    | 'degraded'
+    | 'reconnecting'
+    | 'auth_failed'
+    | 'error';
+  stale: boolean;
+}) {
+  if (connection.status === 'ready') {
+    return {
+      variant: connection.stale ? 'secondaryWarning' : 'secondarySuccess',
+      label: connection.stale ? 'Degraded' : 'Connected',
+    } as const;
+  }
+
+  if (connection.status === 'degraded') {
+    return {
+      variant: 'secondaryWarning',
+      label: 'Degraded',
+    } as const;
+  }
+
+  if (connection.status === 'auth_failed') {
+    return {
+      variant: 'secondaryDestructive',
+      label: 'Auth required',
+    } as const;
+  }
+
+  if (
+    connection.status === 'reconnecting' ||
+    connection.status === 'connecting' ||
+    connection.status === 'authenticating'
+  ) {
+    return {
+      variant: 'default',
+      label: 'Reconnecting',
+    } as const;
+  }
+
+  if (connection.status === 'error') {
+    return {
+      variant: 'secondaryDestructive',
+      label: 'Connection issue',
+    } as const;
+  }
+
+  return {
+    variant: 'secondary',
+    label: 'Disconnected',
+  } as const;
+}
 
 export default function AppLayout() {
   return (
@@ -43,36 +99,7 @@ export const SidebarHeader = () => {
     connection.status === 'reconnecting' ||
     connection.status === 'connecting' ||
     connection.status === 'authenticating';
-  const badge: {
-    variant: React.ComponentProps<typeof Badge>['variant'];
-    label: string;
-  } =
-    connection.status === 'ready'
-      ? {
-          variant: connection.stale ? 'secondaryWarning' : 'secondarySuccess',
-          label: connection.stale ? 'Degraded' : 'Connected',
-        }
-      : connection.status === 'degraded'
-        ? {
-            variant: 'secondaryWarning' as const,
-            label: 'Degraded',
-          }
-        : connection.status === 'reconnecting' ||
-            connection.status === 'connecting' ||
-            connection.status === 'authenticating'
-          ? {
-              variant: 'default' as const,
-              label: 'Reconnecting',
-            }
-          : connection.status === 'error'
-            ? {
-                variant: 'secondaryDestructive' as const,
-                label: 'Connection issue',
-              }
-            : {
-                variant: 'secondary' as const,
-                label: 'Disconnected',
-              };
+  const badge = getGatewayBadgeState(connection);
 
   return (
     <header
