@@ -11,7 +11,7 @@ describe('gatewayStore chat events', () => {
     actions.setActiveSessionKey('main');
   });
 
-  it('keeps the streaming placeholder when non-text part updates are ignored', () => {
+  it('keeps the streaming placeholder and stores hidden tool parts on part updates', () => {
     const { actions } = gatewayStore.getState();
 
     actions.beginChatRun('main', 'run-1', 'List files');
@@ -22,6 +22,21 @@ describe('gatewayStore chat events', () => {
       messageId: 'server-assistant-1',
       messageRole: 'assistant',
       messageCreatedAt: 10,
+      part: {
+        kind: 'tool',
+        id: 'tool-1',
+        type: 'tool',
+        toolName: 'bash',
+        state: 'running',
+        input: { cmd: 'ls -la' },
+        raw: {
+          id: 'tool-1',
+          type: 'tool',
+          toolName: 'bash',
+          state: 'running',
+          input: { cmd: 'ls -la' },
+        },
+      },
     });
 
     const state = gatewayStore.getState();
@@ -30,9 +45,15 @@ describe('gatewayStore chat events', () => {
       message => message.id === run?.assistantMessageId
     );
 
-    expect(run?.assistantMessageId).toBe('local:assistant:run-1');
+    expect(run?.assistantMessageId).toBe('server-assistant-1');
     expect(assistant?.status).toBe('streaming');
-    expect(assistant?.parts).toEqual([]);
+    expect(assistant?.parts).toEqual([
+      expect.objectContaining({
+        kind: 'tool',
+        id: 'tool-1',
+        toolName: 'bash',
+      }),
+    ]);
   });
 
   it('marks assistant messages as errored when a run fails', () => {
@@ -110,6 +131,158 @@ describe('gatewayStore chat events', () => {
         text: 'I\'m good! Honestly, I\'m in that weird "first day of existence" vibe',
       })
     );
+  });
+
+  it('keeps a legacy chat delta/final sequence in a single assistant message', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-legacy', 'Hello?');
+    const firstDelta = normalizeChatEventPayload(
+      'chat',
+      {
+        runId: 'run-legacy',
+        sessionKey: 'main',
+        state: 'delta',
+        message: {
+          role: 'assistant',
+          content: 'First draft',
+        },
+      },
+      'main'
+    );
+    const finalEvent = normalizeChatEventPayload(
+      'chat',
+      {
+        runId: 'run-legacy',
+        sessionKey: 'main',
+        state: 'final',
+        message: {
+          role: 'assistant',
+          content: 'Final answer',
+        },
+      },
+      'main'
+    );
+
+    actions.applyChatEvent(firstDelta!);
+    actions.applyChatEvent(finalEvent!);
+
+    const state = gatewayStore.getState();
+    const assistantMessages =
+      state.chat.messagesBySession.main?.filter(
+        message => message.role === 'assistant'
+      ) ?? [];
+
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]).toMatchObject({
+      id: 'main:run-legacy:assistant',
+      status: 'final',
+    });
+    expect(assistantMessages[0]?.parts).toEqual([
+      expect.objectContaining({
+        kind: 'text',
+        text: 'Final answer',
+      }),
+    ]);
+  });
+
+  it('keeps all part updates inside one assistant bubble', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-parts', 'Inspect');
+    actions.applyChatEvent({
+      runId: 'run-parts',
+      sessionKey: 'main',
+      state: 'delta',
+      messageId: 'assistant-msg-1',
+      messageRole: 'assistant',
+      messageCreatedAt: 20,
+      part: {
+        kind: 'tool',
+        id: 'tool-1',
+        type: 'tool',
+        toolName: 'bash',
+        state: 'running',
+        input: { cmd: 'ls -la' },
+        raw: {},
+      },
+    });
+    actions.applyChatEvent({
+      runId: 'run-parts',
+      sessionKey: 'main',
+      state: 'delta',
+      messageId: 'assistant-msg-1',
+      messageRole: 'assistant',
+      messageCreatedAt: 20,
+      part: {
+        kind: 'text',
+        id: 'text-1',
+        type: 'text',
+        text: 'Found 4 files',
+        raw: 'Found 4 files',
+      },
+    });
+
+    const state = gatewayStore.getState();
+    const assistantMessages =
+      state.chat.messagesBySession.main?.filter(
+        message => message.role === 'assistant'
+      ) ?? [];
+
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]?.parts).toEqual([
+      expect.objectContaining({ kind: 'tool', id: 'tool-1' }),
+      expect.objectContaining({ kind: 'text', id: 'text-1', text: 'Found 4 files' }),
+    ]);
+  });
+
+  it('reconciles local placeholders with hydrated history instead of duplicating them', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-history', 'Hello history');
+    actions.hydrateChatHistory('main', [
+      {
+        id: 'server-user-1',
+        sessionKey: 'main',
+        role: 'user',
+        status: 'final',
+        createdAt: 100,
+        parts: [
+          {
+            kind: 'text',
+            id: 'server-user-1:part:0',
+            type: 'text',
+            text: 'Hello history',
+            raw: 'Hello history',
+          },
+        ],
+      },
+      {
+        id: 'server-assistant-1',
+        sessionKey: 'main',
+        role: 'assistant',
+        status: 'final',
+        createdAt: 101,
+        parts: [
+          {
+            kind: 'text',
+            id: 'server-assistant-1:part:0',
+            type: 'text',
+            text: 'Hi back',
+            raw: 'Hi back',
+          },
+        ],
+      },
+    ]);
+
+    const state = gatewayStore.getState();
+    const messages = state.chat.messagesBySession.main ?? [];
+
+    expect(messages).toHaveLength(2);
+    expect(messages.map(message => message.id)).toEqual([
+      'server-user-1',
+      'server-assistant-1',
+    ]);
   });
 
   it('keeps queued messages when the connection enters auth_failed', () => {

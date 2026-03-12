@@ -9,10 +9,13 @@ import type {
   GatewayChatMessage,
   GatewayChatRun,
   GatewayQueueItem,
+  GatewayChatRole,
+  GatewayChatMessageStatus,
   NormalizedGatewayChatEvent,
   SessionDefaultsSnapshot,
 } from './chat';
 import {
+  getMessageText,
   normalizeSessionDefaults,
   normalizeSessionKeyForDefaults,
 } from './chat';
@@ -122,6 +125,164 @@ export type GatewayStoreState = {
 const EMPTY_CHAT_MESSAGES: GatewayChatMessage[] = [];
 const EMPTY_GATEWAY_QUEUE: GatewayQueueItem[] = [];
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function isLocalMessage(message: GatewayChatMessage) {
+  const raw = asRecord(message.raw);
+  return raw?.local === true || message.id.startsWith('local:');
+}
+
+function buildLocalMessageRaw(
+  runId: string,
+  placeholder: 'user' | 'assistant'
+) {
+  return {
+    local: true,
+    localRunId: runId,
+    placeholder,
+  };
+}
+
+function resolveMessageStatus(
+  state: NormalizedGatewayChatEvent['state']
+): GatewayChatMessageStatus {
+  if (state === 'delta') {
+    return 'streaming';
+  }
+
+  if (state === 'error') {
+    return 'error';
+  }
+
+  if (state === 'aborted') {
+    return 'aborted';
+  }
+
+  return 'final';
+}
+
+function sortMessages(messages: GatewayChatMessage[]) {
+  return [...messages].sort((left, right) => {
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt - right.createdAt;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
+}
+
+function mergeMessage(
+  previous: GatewayChatMessage,
+  incoming: GatewayChatMessage
+): GatewayChatMessage {
+  return {
+    ...previous,
+    ...incoming,
+    id: incoming.id,
+    parts:
+      incoming.parts.length > 0
+        ? mergeParts(previous.parts, incoming.parts)
+        : previous.parts,
+    raw: incoming.raw ?? previous.raw,
+  };
+}
+
+function findRunForMessage(
+  runsById: Record<string, GatewayChatRun>,
+  sessionKey: string,
+  messageId: string
+) {
+  return Object.values(runsById).find(
+    run =>
+      run.sessionKey === sessionKey &&
+      (run.userMessageId === messageId || run.assistantMessageId === messageId)
+  );
+}
+
+function buildVisibleFingerprint(message: GatewayChatMessage) {
+  const text = getMessageText(message);
+  if (!text) {
+    return null;
+  }
+
+  return `${message.role}|${text}`;
+}
+
+function reconcileHydratedMessages(params: {
+  sessionKey: string;
+  incoming: GatewayChatMessage[];
+  existing: GatewayChatMessage[];
+  runsById: Record<string, GatewayChatRun>;
+}) {
+  const canonical = sortMessages(
+    params.incoming.filter(message => !isLocalMessage(message))
+  );
+  const canonicalFingerprints = new Set(
+    canonical
+      .map(message => buildVisibleFingerprint(message))
+      .filter((value): value is string => Boolean(value))
+  );
+  const locals = params.existing.filter(isLocalMessage);
+
+  const keptLocals = locals.filter(message => {
+    const visibleFingerprint = buildVisibleFingerprint(message);
+    if (visibleFingerprint && canonicalFingerprints.has(visibleFingerprint)) {
+      return false;
+    }
+
+    if (message.role !== 'assistant') {
+      return true;
+    }
+
+    const run = findRunForMessage(
+      params.runsById,
+      params.sessionKey,
+      message.id
+    );
+    if (!run) {
+      return message.status === 'streaming';
+    }
+
+    const userMessage = params.existing.find(
+      existing => existing.id === run.userMessageId
+    );
+    if (!userMessage) {
+      return message.status === 'streaming';
+    }
+
+    const userFingerprint = buildVisibleFingerprint(userMessage);
+    if (userFingerprint) {
+      const canonicalUserIndex = canonical.findIndex(candidate => {
+        return (
+          candidate.role === 'user' &&
+          buildVisibleFingerprint(candidate) === userFingerprint
+        );
+      });
+      if (canonicalUserIndex >= 0) {
+        const hasCanonicalAssistantAfterUser = canonical
+          .slice(canonicalUserIndex + 1)
+          .some(candidate => candidate.role === 'assistant');
+        return !hasCanonicalAssistantAfterUser;
+      }
+    }
+
+    const hasCanonicalAssistantAfterUser = canonical.some(
+      candidate =>
+        candidate.role === 'assistant' &&
+        candidate.createdAt >= userMessage.createdAt
+    );
+    return !hasCanonicalAssistantAfterUser;
+  });
+
+  return sortMessages(mergeMessages(canonical, keptLocals));
+}
+
 function mergeMessages(
   incoming: GatewayChatMessage[],
   existing: GatewayChatMessage[]
@@ -187,6 +348,10 @@ function findMessageIndex(
   }
 
   return -1;
+}
+
+function resolveFallbackMessageId(run: GatewayChatRun, role: GatewayChatRole) {
+  return role === 'assistant' ? run.assistantMessageId : run.userMessageId;
 }
 
 function initialChatState(): GatewayChatState {
@@ -401,18 +566,18 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
     },
     hydrateChatHistory: (sessionKey, messages) => {
       set(state => {
-        const existing = state.chat.messagesBySession[sessionKey] ?? [];
-        const streamingLocals = existing.filter(
-          message => message.status === 'streaming'
-        );
-
         return {
           ...state,
           chat: {
             ...state.chat,
             messagesBySession: {
               ...state.chat.messagesBySession,
-              [sessionKey]: mergeMessages(messages, streamingLocals),
+              [sessionKey]: reconcileHydratedMessages({
+                sessionKey,
+                incoming: messages,
+                existing: state.chat.messagesBySession[sessionKey] ?? [],
+                runsById: state.chat.runsById,
+              }),
             },
             historyLoadedBySession: {
               ...state.chat.historyLoadedBySession,
@@ -441,11 +606,14 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
                   role: 'user',
                   status: 'final',
                   createdAt: now,
+                  raw: buildLocalMessageRaw(runId, 'user'),
                   parts: [
                     {
                       kind: 'text',
                       id: `${userMessageId}:part:0`,
+                      type: 'text',
                       text,
+                      raw: text,
                     },
                   ],
                 },
@@ -455,6 +623,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
                   role: 'assistant',
                   status: 'streaming',
                   createdAt: now + 1,
+                  raw: buildLocalMessageRaw(runId, 'assistant'),
                   parts: [],
                 },
               ],
@@ -520,17 +689,12 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
           const incomingMessage: GatewayChatMessage = {
             ...event.message,
             sessionKey,
-            status:
-              event.state === 'delta'
-                ? 'streaming'
-                : event.state === 'error'
-                  ? 'error'
-                  : 'final',
+            status: resolveMessageStatus(event.state),
           };
-          const fallbackMessageId =
-            incomingMessage.role === 'assistant'
-              ? nextRun.assistantMessageId
-              : nextRun.userMessageId;
+          const fallbackMessageId = resolveFallbackMessageId(
+            nextRun,
+            incomingMessage.role
+          );
           const messageIndex = findMessageIndex(
             nextMessages,
             incomingMessage.id,
@@ -539,12 +703,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
 
           if (messageIndex >= 0) {
             const previous = nextMessages[messageIndex];
-            nextMessages[messageIndex] = {
-              ...previous,
-              ...incomingMessage,
-              id: incomingMessage.id,
-              parts: mergeParts(previous.parts, incomingMessage.parts),
-            };
+            nextMessages[messageIndex] = mergeMessage(previous, incomingMessage);
           } else {
             nextMessages.push(incomingMessage);
           }
@@ -558,10 +717,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
 
         if (event.part && event.messageId) {
           const targetRole = event.messageRole ?? 'assistant';
-          const fallbackMessageId =
-            targetRole === 'assistant'
-              ? nextRun.assistantMessageId
-              : nextRun.userMessageId;
+          const fallbackMessageId = resolveFallbackMessageId(nextRun, targetRole);
           const messageIndex = findMessageIndex(
             nextMessages,
             event.messageId,
@@ -578,6 +734,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
               status: 'streaming',
               createdAt: event.messageCreatedAt ?? previous.createdAt,
               parts: mergeParts(previous.parts, [event.part]),
+              raw: previous.raw,
             };
           } else {
             nextMessages.push({
@@ -587,6 +744,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
               status: 'streaming',
               createdAt: event.messageCreatedAt ?? Date.now(),
               parts: [event.part],
+              raw: event.part.raw,
             });
           }
 
@@ -620,7 +778,9 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
           const errorPart = {
             kind: 'error' as const,
             id: `${nextRun.assistantMessageId}:error`,
+            type: 'error',
             message: event.errorMessage ?? 'chat error',
+            raw: event.errorMessage ?? 'chat error',
           };
 
           const assistantIndex = findMessageIndex(
@@ -657,11 +817,11 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
 
           if (assistantIndex >= 0) {
             nextMessages[assistantIndex] = {
-              ...nextMessages[assistantIndex],
-              status: event.state === 'error' ? 'error' : 'final',
-            };
+                ...nextMessages[assistantIndex],
+                status: resolveMessageStatus(event.state),
+              };
+            }
           }
-        }
 
         return {
           ...state,
@@ -669,9 +829,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
             ...state.chat,
             messagesBySession: {
               ...state.chat.messagesBySession,
-              [sessionKey]: nextMessages.sort(
-                (left, right) => left.createdAt - right.createdAt
-              ),
+              [sessionKey]: sortMessages(nextMessages),
             },
             runsById: {
               ...state.chat.runsById,
@@ -714,7 +872,9 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
                   {
                     kind: 'error' as const,
                     id: `${message.id}:error`,
+                    type: 'error',
                     message: error,
+                    raw: error,
                   },
                 ],
               }

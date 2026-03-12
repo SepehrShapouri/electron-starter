@@ -38,6 +38,12 @@ import {
   PromptInputTextarea,
 } from '../components/ai-elements/prompt-input';
 import { QueuePill } from '../components/app/queue-pill';
+import {
+  getVisibleMessageParts,
+  hasRenderableMessage,
+  type GatewayChatMessage,
+  type GatewayVisibleChatMessagePart,
+} from '../lib/gateway/chat';
 import { useGatewayChat } from '../lib/use-gateway-chat';
 import { useGatewayProvision } from '../lib/use-gateway-provision';
 import {
@@ -83,6 +89,42 @@ export function shouldShowGatewayWakeState(params: {
   );
 }
 
+function renderGatewayMessagePart(part: GatewayVisibleChatMessagePart) {
+  if (part.kind === 'text') {
+    return <MessageResponse key={part.id}>{part.text}</MessageResponse>;
+  }
+
+  return (
+    <div
+      key={part.id}
+      className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    >
+      {part.message}
+    </div>
+  );
+}
+
+function renderGatewayMessageContent(message: GatewayChatMessage) {
+  const visibleParts = getVisibleMessageParts(message);
+  const isThinking =
+    message.role === 'assistant' &&
+    message.status === 'streaming' &&
+    visibleParts.length === 0;
+
+  if (isThinking) {
+    return (
+      <div className="inline-flex items-center gap-1.5 overflow-visible py-1 leading-none text-muted-foreground">
+        <span className="sr-only">Thinking</span>
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:120ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:240ms]" />
+      </div>
+    );
+  }
+
+  return visibleParts.map(renderGatewayMessagePart);
+}
+
 export default function AppHome() {
   const { session } = useRouteContext({ from: '/app' });
   const { provisionQuery, chatConfig } = useGatewayProvision();
@@ -114,6 +156,10 @@ export default function AppHome() {
     historyLoaded,
   } = useGatewayChat(resolvedChatConfig);
   const gatewayConnection = useGatewayConnection();
+  const renderableMessages = useMemo(
+    () => messages.filter(hasRenderableMessage),
+    [messages]
+  );
 
   const { sessionKey: resolvedSessionKey } = useGatewayChatSession();
   const contextUsage = useContextUsage(chatConfig, resolvedSessionKey);
@@ -199,7 +245,7 @@ export default function AppHome() {
         : status === 'error'
           ? 'error'
           : 'ready';
-  const isEmptyConversation = messages.length === 0;
+  const isEmptyConversation = renderableMessages.length === 0;
   const displayName = session?.user?.name ?? session?.name ?? null;
   const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
   const promptComposer = (
@@ -309,38 +355,20 @@ export default function AppHome() {
             </div>
           </div>
         ) : (
-          <Conversation className="h-full">
-            <ConversationContent className="px-4 py-8 sm:px-6">
-              {messages.map(message => {
-                const isThinking =
-                  message.role === 'assistant' &&
-                  message.status === 'streaming' &&
-                  !message.content;
-
-                return (
-                  <Message key={message.id} from={message.role}>
-                    <MessageContent>
-                      {isThinking ? (
-                        <div className="inline-flex items-center gap-1.5 overflow-visible py-1 leading-none text-muted-foreground">
-                          <span className="sr-only">Thinking</span>
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:120ms]" />
-                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:240ms]" />
-                        </div>
-                      ) : (
-                        <>
-                          {message.content && (
-                            <MessageResponse>{message.content}</MessageResponse>
-                          )}
-                        </>
-                      )}
-                    </MessageContent>
-                  </Message>
-                );
-              })}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
+            <Conversation className="h-full">
+              <ConversationContent className="px-4 py-8 sm:px-6">
+              {renderableMessages.map(message => {
+                  return (
+                    <Message key={message.id} from={message.role}>
+                      <MessageContent>
+                        {renderGatewayMessageContent(message)}
+                      </MessageContent>
+                    </Message>
+                  );
+                })}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
         )}
       </div>
       {!isEmptyConversation ? (

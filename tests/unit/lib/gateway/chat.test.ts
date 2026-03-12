@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getVisibleMessageParts,
+  hasRenderableMessage,
   getMessageText,
   normalizeChatEventPayload,
   normalizeChatMessage,
 } from '@/lib/gateway/chat';
 
 describe('normalizeChatEventPayload', () => {
-  it('ignores tool part updates in the plain-text projection', () => {
+  it('preserves tool part updates in the structured model', () => {
     const event = normalizeChatEventPayload(
       'chat.message.part.updated',
       {
@@ -32,10 +34,17 @@ describe('normalizeChatEventPayload', () => {
       messageId: 'msg-1',
       messageRole: 'assistant',
     });
-    expect(event?.part).toBeUndefined();
+    expect(event?.part).toMatchObject({
+      kind: 'tool',
+      id: 'part-1',
+      type: 'tool',
+      toolName: 'bash',
+      state: 'running',
+      input: { cmd: 'ls -la' },
+    });
   });
 
-  it('drops tool-only history parts from the plain-text projection', () => {
+  it('preserves tool-only history parts while hiding them from visible text', () => {
     const message = normalizeChatMessage(
       {
         id: 'msg-2',
@@ -59,8 +68,19 @@ describe('normalizeChatEventPayload', () => {
     expect(message).toMatchObject({
       id: 'msg-2',
       role: 'assistant',
-      parts: [],
+      parts: [
+        {
+          kind: 'tool',
+          id: 'tool-1',
+          type: 'tool',
+          toolName: 'bash',
+          state: 'completed',
+          input: { cmd: 'pwd' },
+          output: '/workspace',
+        },
+      ],
     });
+    expect(getVisibleMessageParts(message!)).toEqual([]);
     expect(getMessageText(message!)).toBe('');
   });
 
@@ -112,6 +132,102 @@ describe('normalizeChatEventPayload', () => {
 
     expect(event?.message).toBeDefined();
     expect(getMessageText(event!.message!)).toBe('Hello from the gateway');
+  });
+
+  it('defaults part updates to the assistant role when role metadata is missing', () => {
+    const event = normalizeChatEventPayload(
+      'chat.message.part.updated',
+      {
+        runId: 'run-2',
+        sessionKey: 'main',
+        messageId: 'msg-roleless',
+        part: {
+          id: 'part-roleless',
+          type: 'text',
+          text: 'Hello there',
+        },
+      },
+      'fallback'
+    );
+
+    expect(event).toMatchObject({
+      runId: 'run-2',
+      sessionKey: 'main',
+      messageId: 'msg-roleless',
+      messageRole: 'assistant',
+      part: {
+        kind: 'text',
+        text: 'Hello there',
+      },
+    });
+  });
+
+  it('preserves unknown parts for future rendering', () => {
+    const message = normalizeChatMessage(
+      {
+        id: 'msg-unknown',
+        role: 'assistant',
+        parts: [
+          {
+            id: 'image-1',
+            type: 'image',
+            url: 'https://example.com/image.png',
+          },
+        ],
+      },
+      'main'
+    );
+
+    expect(message).toMatchObject({
+      id: 'msg-unknown',
+      parts: [
+        {
+          kind: 'unknown',
+          id: 'image-1',
+          type: 'image',
+        },
+      ],
+    });
+    expect(getVisibleMessageParts(message!)).toEqual([]);
+  });
+
+  it('treats tool-only final messages as hidden but keeps streaming placeholders renderable', () => {
+    const finalToolOnly = normalizeChatMessage(
+      {
+        id: 'msg-tool-final',
+        role: 'assistant',
+        parts: [
+          {
+            id: 'tool-final',
+            type: 'tool',
+            toolName: 'bash',
+            state: 'output-available',
+            output: 'done',
+          },
+        ],
+      },
+      'main'
+    );
+    const streamingPlaceholder = {
+      id: 'msg-tool-stream',
+      sessionKey: 'main',
+      role: 'assistant' as const,
+      status: 'streaming' as const,
+      createdAt: 1,
+      parts: [
+        {
+          kind: 'tool' as const,
+          id: 'tool-stream',
+          type: 'tool',
+          toolName: 'bash',
+          state: 'running',
+          raw: {},
+        },
+      ],
+    };
+
+    expect(hasRenderableMessage(finalToolOnly!)).toBe(false);
+    expect(hasRenderableMessage(streamingPlaceholder)).toBe(true);
   });
 
   it('uses provided fallback ids for history messages without ids', () => {

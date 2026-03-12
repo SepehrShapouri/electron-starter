@@ -5,24 +5,58 @@ export type SessionDefaultsSnapshot = {
   scope?: string;
 };
 
+export type GatewayChatRole = 'user' | 'assistant';
+export type GatewayChatMessageStatus =
+  | 'streaming'
+  | 'final'
+  | 'error'
+  | 'aborted';
+
+type GatewayChatMessagePartBase = {
+  id: string;
+  type?: string;
+  raw: unknown;
+  isStreaming?: boolean;
+};
+
+export type GatewayChatTextPart = GatewayChatMessagePartBase & {
+  kind: 'text';
+  text: string;
+};
+
+export type GatewayChatErrorPart = GatewayChatMessagePartBase & {
+  kind: 'error';
+  message: string;
+};
+
+export type GatewayChatToolPart = GatewayChatMessagePartBase & {
+  kind: 'tool';
+  toolName?: string;
+  state?: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+};
+
+export type GatewayChatUnknownPart = GatewayChatMessagePartBase & {
+  kind: 'unknown';
+};
+
 export type GatewayChatMessagePart =
-  | {
-      kind: 'text';
-      id: string;
-      text: string;
-      isStreaming?: boolean;
-    }
-  | {
-      kind: 'error';
-      id: string;
-      message: string;
-    };
+  | GatewayChatTextPart
+  | GatewayChatErrorPart
+  | GatewayChatToolPart
+  | GatewayChatUnknownPart;
+
+export type GatewayVisibleChatMessagePart =
+  | GatewayChatTextPart
+  | GatewayChatErrorPart;
 
 export type GatewayChatMessage = {
   id: string;
   sessionKey: string;
-  role: 'user' | 'assistant';
-  status: 'streaming' | 'final' | 'error';
+  role: GatewayChatRole;
+  status: GatewayChatMessageStatus;
   createdAt: number;
   parts: GatewayChatMessagePart[];
   raw?: unknown;
@@ -50,7 +84,7 @@ export type NormalizedGatewayChatEvent = {
   state: 'delta' | 'final' | 'aborted' | 'error';
   message?: GatewayChatMessage;
   messageId?: string;
-  messageRole?: 'user' | 'assistant';
+  messageRole?: GatewayChatRole;
   messageCreatedAt?: number;
   part?: GatewayChatMessagePart;
   removedPartId?: string;
@@ -61,7 +95,31 @@ export type NormalizedGatewayChatEvent = {
 type NormalizeChatMessageOptions = {
   fallbackMessageId?: string;
   fallbackCreatedAt?: number;
+  fallbackRole?: GatewayChatRole;
 };
+
+const TOOL_CALL_TYPES = new Set([
+  'tool_call',
+  'toolcall',
+  'tool-call',
+  'tool_use',
+  'tooluse',
+  'tool-use',
+]);
+const TOOL_RESULT_TYPES = new Set([
+  'tool_result',
+  'toolresult',
+  'tool-result',
+]);
+const TOOL_PART_TYPES = new Set([
+  ...TOOL_CALL_TYPES,
+  ...TOOL_RESULT_TYPES,
+  'tool',
+  'dynamic-tool',
+  'function',
+  'function_call',
+  'function-call',
+]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -72,15 +130,33 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function asString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value : null;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function asRole(value: unknown): 'user' | 'assistant' | null {
+function asRole(value: unknown): GatewayChatRole | null {
   return value === 'assistant' ? 'assistant' : value === 'user' ? 'user' : null;
+}
+
+function readFirstString(
+  record: Record<string, unknown>,
+  keys: string[]
+): string | null {
+  for (const key of keys) {
+    const value = asString(record[key]);
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function buildPartId(messageId: string, index: number) {
+  return `${messageId}:part:${index}`;
 }
 
 export function stripThinkingTags(text: string): string {
@@ -101,21 +177,47 @@ function readCreatedAt(
 }
 
 function readMessageId(value: Record<string, unknown>): string | null {
-  return (
-    asString(value.messageId) ?? asString(value.messageID) ?? asString(value.id)
-  );
+  return readFirstString(value, ['messageId', 'messageID', 'message_id', 'id']);
 }
 
-function buildPartId(messageId: string, index: number) {
-  return `${messageId}:part:${index}`;
+function readPartId(
+  value: Record<string, unknown>,
+  messageId: string,
+  index: number
+) {
+  return readFirstString(value, ['partId', 'partID', 'part_id', 'id']) ?? buildPartId(messageId, index);
+}
+
+function isToolLikePart(
+  record: Record<string, unknown>,
+  type?: string
+): boolean {
+  if (type && TOOL_PART_TYPES.has(type)) {
+    return true;
+  }
+
+  return (
+    readFirstString(record, ['toolName', 'tool_name', 'tool']) !== null ||
+    'toolCallId' in record ||
+    'tool_call_id' in record ||
+    'input' in record ||
+    'output' in record ||
+    'arguments' in record ||
+    'result' in record ||
+    'errorText' in record ||
+    'error_text' in record
+  );
 }
 
 function normalizeTextPart(
   messageId: string,
   index: number,
-  role: 'user' | 'assistant',
-  text: string
-): GatewayChatMessagePart | null {
+  role: GatewayChatRole,
+  text: string,
+  raw: unknown,
+  type?: string,
+  options?: { isStreaming?: boolean; partId?: string }
+): GatewayChatTextPart | null {
   const normalizedText = role === 'assistant' ? stripThinkingTags(text) : text;
   if (!normalizedText) {
     return null;
@@ -123,8 +225,148 @@ function normalizeTextPart(
 
   return {
     kind: 'text',
-    id: buildPartId(messageId, index),
+    id: options?.partId ?? buildPartId(messageId, index),
+    type,
     text: normalizedText,
+    raw,
+    isStreaming: options?.isStreaming,
+  };
+}
+
+function normalizeErrorPart(
+  messageId: string,
+  index: number,
+  raw: unknown,
+  type?: string
+): GatewayChatErrorPart {
+  const record = asRecord(raw);
+  return {
+    kind: 'error',
+    id: record ? readPartId(record, messageId, index) : buildPartId(messageId, index),
+    type,
+    message:
+      (record && readFirstString(record, ['message', 'errorText', 'error_text', 'error'])) ||
+      'Unknown error',
+    raw,
+  };
+}
+
+function resolveToolState(
+  record: Record<string, unknown>,
+  type?: string,
+  errorText?: string | null
+) {
+  const nestedState = asRecord(record.state);
+  const explicit =
+    asString(record.state) ?? (nestedState ? readFirstString(nestedState, ['status']) : null);
+  if (explicit) {
+    return explicit;
+  }
+
+  if (errorText) {
+    return 'output-error';
+  }
+
+  if (type && TOOL_RESULT_TYPES.has(type)) {
+    return 'output-available';
+  }
+
+  if (type && TOOL_CALL_TYPES.has(type)) {
+    return 'input-available';
+  }
+
+  if (
+    'input' in record ||
+    'arguments' in record ||
+    (nestedState && ('input' in nestedState || 'arguments' in nestedState))
+  ) {
+    return 'input-available';
+  }
+
+  if (
+    'output' in record ||
+    'result' in record ||
+    (nestedState && ('output' in nestedState || 'result' in nestedState))
+  ) {
+    return 'output-available';
+  }
+
+  return undefined;
+}
+
+function normalizeToolPart(
+  part: unknown,
+  messageId: string,
+  index: number,
+  type?: string
+): GatewayChatToolPart | GatewayChatUnknownPart {
+  const record = asRecord(part);
+  if (!record) {
+    return {
+      kind: 'unknown',
+      id: buildPartId(messageId, index),
+      type,
+      raw: part,
+    };
+  }
+
+  const nestedState = asRecord(record.state);
+  const toolName =
+    readFirstString(record, ['toolName', 'tool_name', 'tool']) ??
+    (type && (TOOL_CALL_TYPES.has(type) || TOOL_RESULT_TYPES.has(type))
+      ? readFirstString(record, ['name'])
+      : null);
+  const errorText =
+    readFirstString(record, ['errorText', 'error_text', 'error']) ??
+    (nestedState ? readFirstString(nestedState, ['error', 'errorText', 'error_text']) : null);
+  const input =
+    record.input ??
+    record.arguments ??
+    record.args ??
+    nestedState?.input ??
+    nestedState?.arguments ??
+    nestedState?.args;
+  const output =
+    record.output ??
+    record.result ??
+    nestedState?.output ??
+    nestedState?.result ??
+    (type && TOOL_RESULT_TYPES.has(type) ? record.text ?? nestedState?.text : undefined);
+
+  if (!toolName && !type && input === undefined && output === undefined && !errorText) {
+    return {
+      kind: 'unknown',
+      id: readPartId(record, messageId, index),
+      type,
+      raw: part,
+    };
+  }
+
+  return {
+    kind: 'tool',
+    id: readPartId(record, messageId, index),
+    type,
+    toolName: toolName ?? undefined,
+    state: resolveToolState(record, type, errorText),
+    input,
+    output,
+    errorText: errorText ?? undefined,
+    raw: part,
+  };
+}
+
+function normalizeUnknownPart(
+  part: unknown,
+  messageId: string,
+  index: number,
+  type?: string
+): GatewayChatUnknownPart {
+  const record = asRecord(part);
+  return {
+    kind: 'unknown',
+    id: record ? readPartId(record, messageId, index) : buildPartId(messageId, index),
+    type,
+    raw: part,
   };
 }
 
@@ -132,48 +374,72 @@ function normalizePart(
   part: unknown,
   messageId: string,
   index: number,
-  role: 'user' | 'assistant'
+  role: GatewayChatRole,
+  options?: { isStreaming?: boolean }
 ): GatewayChatMessagePart | null {
   const record = asRecord(part);
   if (!record) {
     return null;
   }
 
-  const partId = asString(record.id) ?? buildPartId(messageId, index);
   const type = asString(record.type)?.toLowerCase();
 
   if (type === 'text' && typeof record.text === 'string') {
-    return normalizeTextPart(messageId, index, role, record.text);
+    return normalizeTextPart(
+      messageId,
+      index,
+      role,
+      record.text,
+      part,
+      type,
+      {
+        ...options,
+        partId: readPartId(record, messageId, index),
+      }
+    );
   }
 
   if (type === 'error') {
-    return {
-      kind: 'error',
-      id: partId,
-      message: asString(record.message) ?? 'Unknown error',
-    };
+    return normalizeErrorPart(messageId, index, part, type);
+  }
+
+  if (isToolLikePart(record, type)) {
+    return normalizeToolPart(part, messageId, index, type);
   }
 
   if (typeof record.text === 'string') {
-    return normalizeTextPart(messageId, index, role, record.text);
+    return normalizeTextPart(
+      messageId,
+      index,
+      role,
+      record.text,
+      part,
+      type,
+      {
+        ...options,
+        partId: readPartId(record, messageId, index),
+      }
+    );
   }
 
-  return null;
+  return normalizeUnknownPart(part, messageId, index, type);
 }
 
 export function normalizeChatMessagePart(
   part: unknown,
   messageId: string,
-  role: 'user' | 'assistant',
-  index = 0
+  role: GatewayChatRole,
+  index = 0,
+  options?: { isStreaming?: boolean }
 ) {
-  return normalizePart(part, messageId, index, role);
+  return normalizePart(part, messageId, index, role, options);
 }
 
 function normalizeParts(
   messageId: string,
-  role: 'user' | 'assistant',
-  record: Record<string, unknown>
+  role: GatewayChatRole,
+  record: Record<string, unknown>,
+  options?: { isStreaming?: boolean }
 ) {
   const rawParts = Array.isArray(record.parts)
     ? record.parts
@@ -182,7 +448,7 @@ function normalizeParts(
       : null;
 
   const parts = rawParts
-    ?.map((part, index) => normalizePart(part, messageId, index, role))
+    ?.map((part, index) => normalizePart(part, messageId, index, role, options))
     .filter((part): part is GatewayChatMessagePart => Boolean(part));
 
   if (parts && parts.length > 0) {
@@ -190,13 +456,34 @@ function normalizeParts(
   }
 
   if (typeof record.content === 'string') {
-    const textPart = normalizeTextPart(messageId, 0, role, record.content);
+    const textPart = normalizeTextPart(
+      messageId,
+      0,
+      role,
+      record.content,
+      record.content,
+      'text',
+      options
+    );
     return textPart ? [textPart] : [];
   }
 
   if (typeof record.text === 'string') {
-    const textPart = normalizeTextPart(messageId, 0, role, record.text);
+    const textPart = normalizeTextPart(
+      messageId,
+      0,
+      role,
+      record.text,
+      record.text,
+      'text',
+      options
+    );
     return textPart ? [textPart] : [];
+  }
+
+  const inferredTool = normalizeToolPart(record, messageId, 0, asString(record.type)?.toLowerCase() ?? undefined);
+  if (inferredTool.kind === 'tool') {
+    return [inferredTool];
   }
 
   return [];
@@ -273,13 +560,7 @@ export function normalizeChatMessage(
     return null;
   }
 
-  const roleValue =
-    record.role === 'assistant'
-      ? 'assistant'
-      : record.role === 'user'
-        ? 'user'
-        : null;
-
+  const roleValue = asRole(record.role) ?? options.fallbackRole ?? null;
   if (!roleValue) {
     return null;
   }
@@ -290,7 +571,9 @@ export function normalizeChatMessage(
     `${fallbackSessionKey}:${roleValue}:${readCreatedAt(record)}`;
   const sessionKey = asString(record.sessionKey) ?? fallbackSessionKey;
   const createdAt = readCreatedAt(record, options.fallbackCreatedAt);
-  const parts = normalizeParts(messageId, roleValue, record);
+  const parts = normalizeParts(messageId, roleValue, record, {
+    isStreaming: record.status === 'streaming',
+  });
 
   return {
     id: messageId,
@@ -301,6 +584,24 @@ export function normalizeChatMessage(
     parts,
     raw: message,
   };
+}
+
+function normalizeMessageStatus(
+  state: NormalizedGatewayChatEvent['state']
+): GatewayChatMessageStatus {
+  if (state === 'delta') {
+    return 'streaming';
+  }
+
+  if (state === 'error') {
+    return 'error';
+  }
+
+  if (state === 'aborted') {
+    return 'aborted';
+  }
+
+  return 'final';
 }
 
 export function normalizeChatEventPayload(
@@ -330,17 +631,19 @@ export function normalizeChatEventPayload(
 
     const message = normalizeChatMessage(record.message, sessionKey, {
       fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+      fallbackRole: 'assistant',
     });
-    if (message) {
-      message.status =
-        state === 'delta' ? 'streaming' : state === 'error' ? 'error' : 'final';
-    }
 
     return {
       runId,
       sessionKey,
       state,
-      message: message ?? undefined,
+      message: message
+        ? {
+            ...message,
+            status: normalizeMessageStatus(state),
+          }
+        : undefined,
       errorMessage: asString(record.errorMessage) ?? undefined,
     };
   }
@@ -362,18 +665,21 @@ export function normalizeChatEventPayload(
       return null;
     }
 
+    const state =
+      event === 'chat.run.completed'
+        ? 'final'
+        : event === 'chat.run.aborted'
+          ? 'aborted'
+          : 'error';
+
     return {
       runId,
       sessionKey,
-      state:
-        event === 'chat.run.completed'
-          ? 'final'
-          : event === 'chat.run.aborted'
-            ? 'aborted'
-            : 'error',
+      state,
       message:
         normalizeChatMessage(structured.message, sessionKey, {
           fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+          fallbackRole: 'assistant',
         }) ?? undefined,
       errorMessage: asString(structured.errorMessage) ?? undefined,
     };
@@ -388,20 +694,23 @@ export function normalizeChatEventPayload(
       return null;
     }
 
+    const state =
+      stateValue === 'completed' || stateValue === 'final'
+        ? 'final'
+        : stateValue === 'aborted'
+          ? 'aborted'
+          : stateValue === 'error' || stateValue === 'errored'
+            ? 'error'
+            : 'delta';
+
     return {
       runId,
       sessionKey,
-      state:
-        stateValue === 'completed' || stateValue === 'final'
-          ? 'final'
-          : stateValue === 'aborted'
-            ? 'aborted'
-            : stateValue === 'error' || stateValue === 'errored'
-              ? 'error'
-              : 'delta',
+      state,
       message:
         normalizeChatMessage(structured.message, sessionKey, {
           fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+          fallbackRole: 'assistant',
         }) ?? undefined,
       errorMessage: asString(structured.errorMessage) ?? undefined,
     };
@@ -410,6 +719,11 @@ export function normalizeChatEventPayload(
   if (event === 'chat.message.updated') {
     const runId = asString(structured.runId);
     const sessionKey = asString(structured.sessionKey) ?? fallbackSessionKey;
+    const fallbackRole =
+      asRole(structured.role) ??
+      asRole(structured.messageRole) ??
+      'assistant';
+
     if (!runId) {
       return null;
     }
@@ -419,6 +733,7 @@ export function normalizeChatEventPayload(
       sessionKey,
       {
         fallbackMessageId: `${sessionKey}:${runId}:assistant`,
+        fallbackRole,
       }
     );
 
@@ -439,24 +754,24 @@ export function normalizeChatEventPayload(
     const runId = asString(structured.runId);
     const sessionKey = asString(structured.sessionKey) ?? fallbackSessionKey;
     const partRecord = asRecord(structured.part);
+    const fallbackRole =
+      asRole(structured.role) ??
+      asRole(structured.messageRole) ??
+      (partRecord ? asRole(partRecord.role) : null) ??
+      'assistant';
     const message = normalizeChatMessage(structured.message, sessionKey, {
       fallbackMessageId:
         asString(structured.messageId) ??
         asString(structured.messageID) ??
         (partRecord ? readMessageId(partRecord) : null) ??
         undefined,
+      fallbackRole,
     });
     const messageId =
       message?.id ??
       asString(structured.messageId) ??
       asString(structured.messageID) ??
       (partRecord ? readMessageId(partRecord) : null);
-    const messageRole =
-      message?.role ??
-      asRole(structured.role) ??
-      asRole(structured.messageRole) ??
-      (partRecord ? asRole(partRecord.role) : null) ??
-      'assistant';
 
     if (!runId || !messageId) {
       return null;
@@ -465,7 +780,9 @@ export function normalizeChatEventPayload(
     const part = normalizeChatMessagePart(
       structured.part,
       messageId,
-      messageRole
+      fallbackRole,
+      0,
+      { isStreaming: true }
     );
 
     return {
@@ -473,7 +790,7 @@ export function normalizeChatEventPayload(
       sessionKey,
       state: 'delta',
       messageId,
-      messageRole,
+      messageRole: fallbackRole,
       messageCreatedAt:
         message?.createdAt ??
         (partRecord ? readCreatedAt(partRecord) : Date.now()),
@@ -529,18 +846,27 @@ export function normalizeChatEventPayload(
   return null;
 }
 
+export function getVisibleMessageParts(
+  message: GatewayChatMessage
+): GatewayVisibleChatMessagePart[] {
+  return message.parts.filter(
+    (part): part is GatewayVisibleChatMessagePart =>
+      part.kind === 'text' || part.kind === 'error'
+  );
+}
+
+export function hasRenderableMessage(message: GatewayChatMessage) {
+  return message.status === 'streaming' || getVisibleMessageParts(message).length > 0;
+}
+
 export function getMessageText(message: GatewayChatMessage) {
-  return message.parts
+  return getVisibleMessageParts(message)
     .map(part => {
       if (part.kind === 'text') {
         return part.text;
       }
 
-      if (part.kind === 'error') {
-        return part.message;
-      }
-
-      return '';
+      return part.message;
     })
     .filter(Boolean)
     .join('\n')

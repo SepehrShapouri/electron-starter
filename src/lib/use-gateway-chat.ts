@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
 import {
-  getMessageText,
   normalizeChatMessage,
   type GatewayChatMessage,
   type GatewayQueueItem,
@@ -12,12 +11,7 @@ import type { GatewayConnectionConfig } from '@/lib/gateway/config';
 import { getGatewaySessionManager } from '@/lib/gateway/session-manager';
 import { useGatewayStore } from '@/lib/gateway/store';
 
-export type ChatMessage = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  status?: 'streaming' | 'final' | 'error';
-};
+export type ChatMessage = GatewayChatMessage;
 export type QueueItem = GatewayQueueItem;
 
 export type GatewayChatStatus =
@@ -105,20 +99,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
     state =>
       state.chat.historyLoadedBySession[state.chat.resolvedSessionKey] ?? false
   );
-  const messages = useMemo(
-    () =>
-      structuredMessages
-        .map(message => ({
-          id: message.id,
-          role: message.role,
-          content: getMessageText(message),
-          status: message.status,
-        }))
-        .filter(
-          message => Boolean(message.content) || message.status === 'streaming'
-        ),
-    [structuredMessages]
-  );
+  const messages = useMemo(() => structuredMessages, [structuredMessages]);
 
   useEffect(() => {
     actions.setActiveSessionKey(config.sessionKey);
