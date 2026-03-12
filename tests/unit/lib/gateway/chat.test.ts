@@ -84,6 +84,30 @@ describe('normalizeChatEventPayload', () => {
     expect(getMessageText(message!)).toBe('');
   });
 
+  it('keeps toolResult history messages instead of dropping them', () => {
+    const message = normalizeChatMessage(
+      {
+        id: 'msg-tool-role',
+        role: 'toolResult',
+        toolName: 'bash',
+        content: 'command output here',
+      },
+      'main'
+    );
+
+    expect(message).toMatchObject({
+      id: 'msg-tool-role',
+      role: 'toolResult',
+      parts: [
+        {
+          kind: 'text',
+          text: 'command output here',
+        },
+      ],
+    });
+    expect(hasRenderableMessage(message!)).toBe(true);
+  });
+
   it('includes error parts in the plain-text projection', () => {
     const message = normalizeChatMessage(
       {
@@ -191,7 +215,7 @@ describe('normalizeChatEventPayload', () => {
     expect(getVisibleMessageParts(message!)).toEqual([]);
   });
 
-  it('treats tool-only final messages as hidden but keeps streaming placeholders renderable', () => {
+  it('treats tool-only messages as renderable for history and live placeholders', () => {
     const finalToolOnly = normalizeChatMessage(
       {
         id: 'msg-tool-final',
@@ -226,7 +250,7 @@ describe('normalizeChatEventPayload', () => {
       ],
     };
 
-    expect(hasRenderableMessage(finalToolOnly!)).toBe(false);
+    expect(hasRenderableMessage(finalToolOnly!)).toBe(true);
     expect(hasRenderableMessage(streamingPlaceholder)).toBe(true);
   });
 

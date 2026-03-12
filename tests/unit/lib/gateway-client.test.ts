@@ -197,6 +197,7 @@ describe('GatewayClient', () => {
       type: 'req',
       method: 'connect',
       params: expect.objectContaining({
+        caps: ['tool-events'],
         client: expect.objectContaining({
           id: 'openclaw-control-ui',
           mode: 'webchat',

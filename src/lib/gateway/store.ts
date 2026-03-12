@@ -16,9 +16,14 @@ import type {
 } from './chat';
 import {
   getMessageText,
+  getToolMessageParts,
   normalizeSessionDefaults,
   normalizeSessionKeyForDefaults,
 } from './chat';
+import type {
+  GatewayToolStreamEntry,
+  NormalizedGatewayToolEvent,
+} from './tool-stream';
 
 export type GatewayConnectionStatus =
   | 'idle'
@@ -74,6 +79,7 @@ type GatewayChatState = {
   currentRunIdBySession: Record<string, string | null>;
   queuesBySession: Record<string, GatewayQueueItem[]>;
   historyLoadedBySession: Record<string, boolean>;
+  toolStreamBySession: Record<string, GatewayToolStreamEntry[]>;
 };
 
 type GatewayStoreActions = {
@@ -102,6 +108,7 @@ type GatewayStoreActions = {
   ) => void;
   beginChatRun: (sessionKey: string, runId: string, text: string) => void;
   applyChatEvent: (event: NormalizedGatewayChatEvent) => void;
+  applyToolEvent: (event: NormalizedGatewayToolEvent) => void;
   failChatRequest: (runId: string, error: string) => void;
   queueChatMessage: (sessionKey: string, text: string) => GatewayQueueItem;
   removeQueuedMessage: (sessionKey: string, queueId: string) => void;
@@ -124,6 +131,7 @@ export type GatewayStoreState = {
 
 const EMPTY_CHAT_MESSAGES: GatewayChatMessage[] = [];
 const EMPTY_GATEWAY_QUEUE: GatewayQueueItem[] = [];
+const EMPTY_TOOL_STREAM_ENTRIES: GatewayToolStreamEntry[] = [];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -354,6 +362,81 @@ function resolveFallbackMessageId(run: GatewayChatRun, role: GatewayChatRole) {
   return role === 'assistant' ? run.assistantMessageId : run.userMessageId;
 }
 
+function collectCanonicalToolCallIds(messages: GatewayChatMessage[]) {
+  const ids = new Set<string>();
+
+  for (const message of messages) {
+    for (const part of getToolMessageParts(message)) {
+      ids.add(part.id);
+    }
+  }
+
+  return ids;
+}
+
+const TOOL_STREAM_LIMIT = 50;
+
+function upsertToolStreamEntries(
+  entries: GatewayToolStreamEntry[],
+  event: NormalizedGatewayToolEvent,
+  assistantMessageId?: string
+) {
+  const next = [...entries];
+  const index = next.findIndex(entry => entry.toolCallId === event.toolCallId);
+  const previous = index >= 0 ? next[index] : null;
+  const entry: GatewayToolStreamEntry = {
+    toolCallId: event.toolCallId,
+    runId: event.runId,
+    sessionKey: event.sessionKey,
+    assistantMessageId: assistantMessageId ?? previous?.assistantMessageId,
+    toolName: event.toolName,
+    state: event.state,
+    input: event.input ?? previous?.input,
+    output: event.output ?? previous?.output,
+    errorText: event.errorText ?? previous?.errorText,
+    startedAt: previous?.startedAt ?? event.ts,
+    updatedAt: event.ts,
+    raw: event.raw,
+  };
+
+  if (index >= 0) {
+    next[index] = entry;
+  } else {
+    next.push(entry);
+  }
+
+  const sorted = next.sort((left, right) => {
+    if (left.startedAt !== right.startedAt) {
+      return left.startedAt - right.startedAt;
+    }
+
+    return left.toolCallId.localeCompare(right.toolCallId);
+  });
+
+  return sorted.slice(Math.max(sorted.length - TOOL_STREAM_LIMIT, 0));
+}
+
+function reanchorToolStreamEntries(
+  entries: GatewayToolStreamEntry[],
+  runId: string,
+  assistantMessageId: string
+) {
+  let changed = false;
+  const next = entries.map(entry => {
+    if (entry.runId !== runId || entry.assistantMessageId === assistantMessageId) {
+      return entry;
+    }
+
+    changed = true;
+    return {
+      ...entry,
+      assistantMessageId,
+    };
+  });
+
+  return changed ? next : entries;
+}
+
 function initialChatState(): GatewayChatState {
   return {
     activeSessionKey: 'main',
@@ -363,6 +446,7 @@ function initialChatState(): GatewayChatState {
     currentRunIdBySession: {},
     queuesBySession: {},
     historyLoadedBySession: {},
+    toolStreamBySession: {},
   };
 }
 
@@ -500,6 +584,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
             state.chat.activeSessionKey,
             nextDefaults
           ),
+          toolStreamBySession: {},
         },
       }));
     },
@@ -566,18 +651,30 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
     },
     hydrateChatHistory: (sessionKey, messages) => {
       set(state => {
+        const reconciledMessages = reconcileHydratedMessages({
+          sessionKey,
+          incoming: messages,
+          existing: state.chat.messagesBySession[sessionKey] ?? [],
+          runsById: state.chat.runsById,
+        });
+        const canonicalToolCallIds = collectCanonicalToolCallIds(
+          reconciledMessages
+        );
+        const preservedToolEntries = (
+          state.chat.toolStreamBySession[sessionKey] ?? []
+        ).filter(entry => !canonicalToolCallIds.has(entry.toolCallId));
+
         return {
           ...state,
           chat: {
             ...state.chat,
             messagesBySession: {
               ...state.chat.messagesBySession,
-              [sessionKey]: reconcileHydratedMessages({
-                sessionKey,
-                incoming: messages,
-                existing: state.chat.messagesBySession[sessionKey] ?? [],
-                runsById: state.chat.runsById,
-              }),
+              [sessionKey]: reconciledMessages,
+            },
+            toolStreamBySession: {
+              ...state.chat.toolStreamBySession,
+              [sessionKey]: preservedToolEntries,
             },
             historyLoadedBySession: {
               ...state.chat.historyLoadedBySession,
@@ -817,11 +914,17 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
 
           if (assistantIndex >= 0) {
             nextMessages[assistantIndex] = {
-                ...nextMessages[assistantIndex],
-                status: resolveMessageStatus(event.state),
-              };
-            }
+              ...nextMessages[assistantIndex],
+              status: resolveMessageStatus(event.state),
+            };
           }
+        }
+
+        const anchoredToolEntries = reanchorToolStreamEntries(
+          state.chat.toolStreamBySession[sessionKey] ?? [],
+          event.runId,
+          nextRun.assistantMessageId
+        );
 
         return {
           ...state,
@@ -830,6 +933,10 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
             messagesBySession: {
               ...state.chat.messagesBySession,
               [sessionKey]: sortMessages(nextMessages),
+            },
+            toolStreamBySession: {
+              ...state.chat.toolStreamBySession,
+              [sessionKey]: anchoredToolEntries,
             },
             runsById: {
               ...state.chat.runsById,
@@ -849,6 +956,36 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
             currentRunIdBySession: {
               ...state.chat.currentRunIdBySession,
               [sessionKey]: event.state === 'delta' ? event.runId : null,
+            },
+          },
+        };
+      });
+    },
+    applyToolEvent: event => {
+      set(state => {
+        const activeRunId = state.chat.currentRunIdBySession[event.sessionKey];
+        const activeSessionKey = state.chat.resolvedSessionKey;
+        const run = state.chat.runsById[event.runId];
+
+        if (!activeRunId || activeRunId !== event.runId) {
+          return state;
+        }
+
+        if (event.sessionKey !== activeSessionKey) {
+          return state;
+        }
+
+        return {
+          ...state,
+          chat: {
+            ...state.chat,
+            toolStreamBySession: {
+              ...state.chat.toolStreamBySession,
+              [event.sessionKey]: upsertToolStreamEntries(
+                state.chat.toolStreamBySession[event.sessionKey] ?? [],
+                event,
+                run?.assistantMessageId
+              ),
             },
           },
         };
@@ -889,6 +1026,7 @@ export const gatewayStore = createStore<GatewayStoreState>()(set => ({
               ...state.chat.messagesBySession,
               [run.sessionKey]: nextMessages,
             },
+            toolStreamBySession: state.chat.toolStreamBySession,
             runsById: {
               ...state.chat.runsById,
               [runId]: {
@@ -990,6 +1128,9 @@ export function useGatewayChatSession(sessionKey?: string) {
         sessionKey: resolvedSessionKey,
         messages:
           state.chat.messagesBySession[resolvedSessionKey] ?? EMPTY_CHAT_MESSAGES,
+        toolEntries:
+          state.chat.toolStreamBySession[resolvedSessionKey] ??
+          EMPTY_TOOL_STREAM_ENTRIES,
         queue:
           state.chat.queuesBySession[resolvedSessionKey] ?? EMPTY_GATEWAY_QUEUE,
         currentRunId:

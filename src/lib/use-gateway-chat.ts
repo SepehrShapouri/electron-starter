@@ -10,6 +10,7 @@ import {
 import type { GatewayConnectionConfig } from '@/lib/gateway/config';
 import { getGatewaySessionManager } from '@/lib/gateway/session-manager';
 import { useGatewayStore } from '@/lib/gateway/store';
+import type { GatewayToolStreamEntry } from '@/lib/gateway/tool-stream';
 
 export type ChatMessage = GatewayChatMessage;
 export type QueueItem = GatewayQueueItem;
@@ -28,6 +29,7 @@ export type GatewayChatConfig = GatewayConnectionConfig & {
 
 const EMPTY_CHAT_MESSAGES: GatewayChatMessage[] = [];
 const EMPTY_GATEWAY_QUEUE: GatewayQueueItem[] = [];
+const EMPTY_TOOL_ENTRIES: GatewayToolStreamEntry[] = [];
 
 export function getGatewayChatStatus(params: {
   connectionStatus:
@@ -90,6 +92,11 @@ export function useGatewayChat(config: GatewayChatConfig) {
     state =>
       state.chat.queuesBySession[state.chat.resolvedSessionKey] ??
       EMPTY_GATEWAY_QUEUE
+  );
+  const toolEntries = useGatewayStore(
+    state =>
+      state.chat.toolStreamBySession[state.chat.resolvedSessionKey] ??
+      EMPTY_TOOL_ENTRIES
   );
   const currentRunId = useGatewayStore(
     state =>
@@ -299,6 +306,7 @@ export function useGatewayChat(config: GatewayChatConfig) {
     status,
     error: health.lastError,
     messages,
+    toolEntries,
     queue,
     connected,
     connect,

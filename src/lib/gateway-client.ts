@@ -74,6 +74,7 @@ const GATEWAY_OPERATOR_SCOPES = [
   'operator.approvals',
   'operator.pairing',
 ] as const;
+const GATEWAY_CLIENT_CAPS = ['tool-events'] as const;
 
 function truncateCloseReason(reason: string) {
   return reason.slice(0, 123);
@@ -250,6 +251,7 @@ export class GatewayClient {
       role,
       scopes,
       device,
+      caps: [...GATEWAY_CLIENT_CAPS],
       auth,
       userAgent: navigator.userAgent,
       locale: navigator.language,

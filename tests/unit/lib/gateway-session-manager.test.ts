@@ -12,6 +12,12 @@ const gatewayClientMocks = vi.hoisted(() => {
       readonly opts: {
         onAuthenticating?: () => void;
         onHello?: (hello: unknown) => void;
+        onEvent?: (event: {
+          type: 'event';
+          event: string;
+          payload?: unknown;
+          seq?: number;
+        }) => void;
         onClose?: (info: { code: number; reason: string }) => void;
         onError?: (error: Error) => void;
         onGap?: (info: { expected: number; received: number }) => void;
@@ -34,6 +40,15 @@ const gatewayClientMocks = vi.hoisted(() => {
 
     emitHello(hello: unknown = { type: 'hello-ok', protocol: 3 }) {
       this.opts.onHello?.(hello);
+    }
+
+    emitEvent(event: {
+      type: 'event';
+      event: string;
+      payload?: unknown;
+      seq?: number;
+    }) {
+      this.opts.onEvent?.(event);
     }
 
     emitClose(code: number, reason = '') {
@@ -188,5 +203,38 @@ describe('GatewaySessionManager', () => {
 
     expect(gatewayStore.getState().connection.status).toBe('connecting');
     expect(gatewayStore.getState().health.lastError).toBeNull();
+  });
+
+  it('routes targeted agent tool events into the tool stream store', () => {
+    const manager = new GatewaySessionManager();
+    const { actions } = gatewayStore.getState();
+
+    manager.start({ gatewayUrl: 'ws://127.0.0.1:18789' });
+    latestClient().emitHello();
+    actions.beginChatRun('main', 'run-tools', 'Inspect');
+    latestClient().emitEvent({
+      type: 'event',
+      event: 'agent',
+      payload: {
+        runId: 'run-tools',
+        sessionKey: 'main',
+        stream: 'tool',
+        ts: 10,
+        data: {
+          phase: 'start',
+          name: 'bash',
+          toolCallId: 'tool-1',
+          args: { cmd: 'ls -la' },
+        },
+      },
+    });
+
+    expect(gatewayStore.getState().chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-1',
+        runId: 'run-tools',
+        toolName: 'bash',
+      }),
+    ]);
   });
 });

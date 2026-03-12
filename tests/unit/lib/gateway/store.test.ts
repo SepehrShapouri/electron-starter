@@ -285,6 +285,207 @@ describe('gatewayStore chat events', () => {
     ]);
   });
 
+  it('stores tool events only for the active run in the active session', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-tools', 'Inspect');
+    actions.applyToolEvent({
+      runId: 'run-tools',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'start',
+      state: 'input-available',
+      input: { cmd: 'ls -la' },
+      ts: 10,
+      raw: {},
+    });
+    actions.applyToolEvent({
+      runId: 'run-other',
+      sessionKey: 'main',
+      toolCallId: 'tool-2',
+      toolName: 'bash',
+      phase: 'start',
+      state: 'input-available',
+      input: { cmd: 'pwd' },
+      ts: 11,
+      raw: {},
+    });
+
+    const state = gatewayStore.getState();
+    expect(state.chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-1',
+        runId: 'run-tools',
+        toolName: 'bash',
+      }),
+    ]);
+  });
+
+  it('updates tool stream entries in place and keeps them after final chat state', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-tools-final', 'Inspect');
+    actions.applyToolEvent({
+      runId: 'run-tools-final',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'start',
+      state: 'input-available',
+      input: { cmd: 'ls -la' },
+      ts: 10,
+      raw: {},
+    });
+    actions.applyToolEvent({
+      runId: 'run-tools-final',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'update',
+      state: 'input-available',
+      output: 'partial output',
+      ts: 11,
+      raw: {},
+    });
+    actions.applyToolEvent({
+      runId: 'run-tools-final',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'result',
+      state: 'output-available',
+      output: 'done',
+      ts: 12,
+      raw: {},
+    });
+
+    let state = gatewayStore.getState();
+    expect(state.chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-1',
+        assistantMessageId: 'local:assistant:run-tools-final',
+        input: { cmd: 'ls -la' },
+        output: 'done',
+        state: 'output-available',
+      }),
+    ]);
+
+    actions.applyChatEvent({
+      runId: 'run-tools-final',
+      sessionKey: 'main',
+      state: 'final',
+      message: {
+        id: 'assistant-final',
+        sessionKey: 'main',
+        role: 'assistant',
+        status: 'final',
+        createdAt: 20,
+        parts: [
+          {
+            kind: 'text',
+            id: 'assistant-final:part:0',
+            type: 'text',
+            text: 'Done',
+            raw: 'Done',
+          },
+        ],
+      },
+    });
+
+    state = gatewayStore.getState();
+    expect(state.chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-1',
+        assistantMessageId: 'assistant-final',
+        input: { cmd: 'ls -la' },
+        output: 'done',
+        state: 'output-available',
+      }),
+    ]);
+  });
+
+  it('keeps completed tool entries across follow-up sends until history supersedes them', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-tools-history', 'Inspect');
+    actions.applyToolEvent({
+      runId: 'run-tools-history',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'result',
+      state: 'output-available',
+      output: 'done',
+      ts: 12,
+      raw: {},
+    });
+
+    actions.beginChatRun('main', 'run-follow-up', 'Follow up');
+
+    expect(gatewayStore.getState().chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-1',
+        runId: 'run-tools-history',
+      }),
+    ]);
+  });
+
+  it('clears only tool entries that are superseded by hydrated canonical history', () => {
+    const { actions } = gatewayStore.getState();
+
+    actions.beginChatRun('main', 'run-tools-history', 'Inspect');
+    actions.applyToolEvent({
+      runId: 'run-tools-history',
+      sessionKey: 'main',
+      toolCallId: 'tool-1',
+      toolName: 'bash',
+      phase: 'result',
+      state: 'output-available',
+      output: 'done',
+      ts: 12,
+      raw: {},
+    });
+    actions.applyToolEvent({
+      runId: 'run-tools-history',
+      sessionKey: 'main',
+      toolCallId: 'tool-2',
+      toolName: 'grep',
+      phase: 'result',
+      state: 'output-available',
+      output: 'found',
+      ts: 13,
+      raw: {},
+    });
+
+    actions.hydrateChatHistory('main', [
+      {
+        id: 'assistant-final',
+        sessionKey: 'main',
+        role: 'assistant',
+        status: 'final',
+        createdAt: 20,
+        parts: [
+          {
+            kind: 'tool',
+            id: 'tool-1',
+            type: 'toolCall',
+            toolName: 'bash',
+            state: 'input-available',
+            input: { cmd: 'ls -la' },
+            raw: {},
+          },
+        ],
+      },
+    ]);
+
+    expect(gatewayStore.getState().chat.toolStreamBySession.main).toEqual([
+      expect.objectContaining({
+        toolCallId: 'tool-2',
+      }),
+    ]);
+  });
+
   it('keeps queued messages when the connection enters auth_failed', () => {
     const { actions } = gatewayStore.getState();
 

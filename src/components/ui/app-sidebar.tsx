@@ -76,7 +76,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Jarvis"
                 className="h-9"
                 isActive={isJarvisActive}
               >
@@ -89,7 +88,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {/* <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Skills"
                 className="h-9"
                 isActive={isSkillsActive}
               >
@@ -102,7 +100,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Scheduled"
                 className="h-9"
                 isActive={isScheduledActive}
               >
@@ -115,7 +112,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Channels"
                 className="h-9"
                 isActive={isChannelsActive}
               >
@@ -128,7 +124,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Integrations"
                 className="h-9"
                 isActive={isIntegrationsActive}
               >

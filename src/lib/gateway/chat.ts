@@ -5,7 +5,7 @@ export type SessionDefaultsSnapshot = {
   scope?: string;
 };
 
-export type GatewayChatRole = 'user' | 'assistant';
+export type GatewayChatRole = 'user' | 'assistant' | 'toolResult';
 export type GatewayChatMessageStatus =
   | 'streaming'
   | 'final'
@@ -138,7 +138,19 @@ function asNumber(value: unknown): number | null {
 }
 
 function asRole(value: unknown): GatewayChatRole | null {
-  return value === 'assistant' ? 'assistant' : value === 'user' ? 'user' : null;
+  if (value === 'assistant') {
+    return 'assistant';
+  }
+
+  if (value === 'user') {
+    return 'user';
+  }
+
+  return value === 'toolResult' ||
+    value === 'tool_result' ||
+    value === 'tool'
+    ? 'toolResult'
+    : null;
 }
 
 function readFirstString(
@@ -329,6 +341,7 @@ function normalizeToolPart(
   const output =
     record.output ??
     record.result ??
+    (typeof record.content === 'string' ? record.content : undefined) ??
     nestedState?.output ??
     nestedState?.result ??
     (type && TOOL_RESULT_TYPES.has(type) ? record.text ?? nestedState?.text : undefined);
@@ -441,6 +454,7 @@ function normalizeParts(
   record: Record<string, unknown>,
   options?: { isStreaming?: boolean }
 ) {
+  const type = asString(record.type)?.toLowerCase() ?? undefined;
   const rawParts = Array.isArray(record.parts)
     ? record.parts
     : Array.isArray(record.content)
@@ -455,6 +469,10 @@ function normalizeParts(
     return parts;
   }
 
+  if (isToolLikePart(record, type) && role !== 'toolResult') {
+    return [normalizeToolPart(record, messageId, 0, type)];
+  }
+
   if (typeof record.content === 'string') {
     const textPart = normalizeTextPart(
       messageId,
@@ -462,7 +480,7 @@ function normalizeParts(
       role,
       record.content,
       record.content,
-      'text',
+      type ?? 'text',
       options
     );
     return textPart ? [textPart] : [];
@@ -475,15 +493,10 @@ function normalizeParts(
       role,
       record.text,
       record.text,
-      'text',
+      type ?? 'text',
       options
     );
     return textPart ? [textPart] : [];
-  }
-
-  const inferredTool = normalizeToolPart(record, messageId, 0, asString(record.type)?.toLowerCase() ?? undefined);
-  if (inferredTool.kind === 'tool') {
-    return [inferredTool];
   }
 
   return [];
@@ -855,8 +868,18 @@ export function getVisibleMessageParts(
   );
 }
 
+export function getToolMessageParts(message: GatewayChatMessage) {
+  return message.parts.filter(
+    (part): part is GatewayChatToolPart => part.kind === 'tool'
+  );
+}
+
 export function hasRenderableMessage(message: GatewayChatMessage) {
-  return message.status === 'streaming' || getVisibleMessageParts(message).length > 0;
+  return (
+    message.status === 'streaming' ||
+    getVisibleMessageParts(message).length > 0 ||
+    getToolMessageParts(message).length > 0
+  );
 }
 
 export function getMessageText(message: GatewayChatMessage) {

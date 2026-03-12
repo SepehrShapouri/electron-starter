@@ -13,6 +13,7 @@ import {
   type GatewayConnectionConfig,
 } from './config';
 import { gatewayStore, type GatewayFailureKind } from './store';
+import { normalizeGatewayToolEventPayload } from './tool-stream';
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -443,6 +444,14 @@ export class GatewaySessionManager {
 
     if (normalizedChatEvent) {
       gatewayStore.getState().actions.applyChatEvent(normalizedChatEvent);
+    }
+
+    const normalizedToolEvent = normalizeGatewayToolEventPayload(
+      event.event,
+      event.payload
+    );
+    if (normalizedToolEvent) {
+      gatewayStore.getState().actions.applyToolEvent(normalizedToolEvent);
     }
 
     for (const listener of this.listeners) {
