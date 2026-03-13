@@ -1,8 +1,8 @@
 {
-  "name": "clawpilot",
-  "productName": "clawpilot",
+  "name": "electron-update-starter",
+  "productName": "Electron Update Starter",
   "version": "1.0.0",
-  "description": "Electron Forge with shadcn/ui (Vite + Typescript)",
+  "description": "Reusable Electron starter with React, TanStack Router, Tailwind CSS, and in-app update plumbing.",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -24,16 +24,17 @@
     "routes:generate": "tsr generate",
     "routes:watch": "tsr watch"
   },
-  "keywords": [],
+  "keywords": [
+    "electron",
+    "react",
+    "starter",
+    "auto-update"
+  ],
   "author": {
-    "name": "Rohit Soni"
+    "name": "Your team"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Sidejar/clawpilot-app.git"
-  },
-  "clawpilot": {
-    "updateRepository": "Sidejar/clawpilot-releases"
+  "electronBoilerplate": {
+    "updateRepository": ""
   },
   "license": "MIT",
   "devDependencies": {

@@ -64,7 +64,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { BarsSpinner } from '../bars-spinner';
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string })[];
   add: (files: File[] | FileList) => void;
@@ -666,7 +665,10 @@ export const PromptInput = ({
     }
 
     Promise.all(
-      files.map(async ({ id, ...item }) => {
+      files.map(async file => {
+        const { id: ignoredId, ...item } = file;
+        void ignoredId;
+
         if (item.url?.startsWith('blob:')) {
           const dataUrl = await convertBlobUrlToDataUrl(item.url);
           return {
@@ -983,7 +985,7 @@ export const PromptInputSubmit = ({
   let Icon = <IconArrowUp className="size-4" />;
 
   if (status === 'submitted') {
-    Icon = <BarsSpinner size={16}/>;
+    Icon = <Loader2Icon className="size-4 animate-spin" />;
   } else if (status === 'streaming') {
     Icon = <SquareIcon className="size-4" />;
   } else if (status === 'error') {

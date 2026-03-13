@@ -1,7 +1,6 @@
 import { apiClient, ApiError, getApiErrorMessage, setAuthToken } from './axios';
 import axios from 'axios';
 import { authClient } from './auth-client';
-import { resetAnalytics } from './analytics';
 
 type AuthResult = {
   token?: string | null;
@@ -127,7 +126,6 @@ export const authApi = {
         }
 
         setAuthToken(null);
-        resetAnalytics();
         return response.data;
       })
       .catch(error => {

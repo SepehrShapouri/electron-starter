@@ -1,24 +1,16 @@
-import { routeTree } from "@/routeTree.gen";
-import { createMemoryHistory, createRouter } from "@tanstack/react-router";
-import type { QueryClient } from "@tanstack/react-query";
-
-export type RouterContext = {
-  queryClient: QueryClient;
-};
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
+import { createMemoryHistory, createRouter } from '@tanstack/react-router';
+import { routeTree } from '@/routeTree.gen';
 
 export const router = createRouter({
   defaultPendingMinMs: 0,
   routeTree,
-  context: {
-    queryClient: null as unknown as QueryClient,
-  },
   history: createMemoryHistory({
-    initialEntries: ["/"],
+    initialEntries: ['/'],
   }),
 });
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router;
+  }
+}

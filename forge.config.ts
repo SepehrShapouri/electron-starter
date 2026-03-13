@@ -40,16 +40,18 @@ const readRepositoryFromPackageManifest = () => {
     const packageJsonPath = path.join(process.cwd(), 'package.json');
     const packageJsonRaw = readFileSync(packageJsonPath, 'utf8');
     const packageJson = JSON.parse(packageJsonRaw) as {
-      clawpilot?: { updateRepository?: string };
+      electronBoilerplate?: { updateRepository?: string };
       repository?: string | { url?: string };
     };
 
     if (
-      packageJson.clawpilot &&
-      typeof packageJson.clawpilot === 'object' &&
-      typeof packageJson.clawpilot.updateRepository === 'string'
+      packageJson.electronBoilerplate &&
+      typeof packageJson.electronBoilerplate === 'object' &&
+      typeof packageJson.electronBoilerplate.updateRepository === 'string'
     ) {
-      return parseRepositoryCoordinates(packageJson.clawpilot.updateRepository);
+      return parseRepositoryCoordinates(
+        packageJson.electronBoilerplate.updateRepository
+      );
     }
 
     if (typeof packageJson.repository === 'string') {
@@ -91,14 +93,8 @@ const hasNotarizeConfig =
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'clawpilot',
+    executableName: 'electron-update-starter',
     icon: 'src/assets/Icon',
-    protocols: [
-      {
-        name: 'Clawpilot Protocol',
-        schemes: ['clawpilot'],
-      },
-    ],
     osxSign: process.platform === 'darwin' ? true : undefined,
     osxNotarize:
       process.platform === 'darwin' && hasNotarizeConfig
@@ -133,11 +129,8 @@ const config: ForgeConfig = {
     : [],
   plugins: [
     new VitePlugin({
-      // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
-      // If you are familiar with Vite configuration, it will look really familiar.
       build: [
         {
-          // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: 'src/main.ts',
           config: 'vite.main.config.mts',
           target: 'main',
@@ -155,8 +148,6 @@ const config: ForgeConfig = {
         },
       ],
     }),
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,

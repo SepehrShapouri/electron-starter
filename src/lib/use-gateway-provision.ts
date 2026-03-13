@@ -3,7 +3,6 @@ import type { GatewayChatConfig } from '@/lib/use-gateway-chat';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { authApi } from './auth-api';
 import { ApiError } from './axios';
 
 export type GatewayProvisionConfig = GatewayConnectionConfig;
@@ -17,7 +16,14 @@ export function useGatewayProvision(options: UseGatewayProvisionOptions = {}) {
 
   const provisionQuery = useQuery({
     queryKey: ['gateway-provision'],
-    queryFn: authApi.provisionGateway,
+    // queryFn: authApi.provisionGateway,
+    queryFn:()=>{
+      return {
+        gatewayUrl:'ws://127.0.0.1:18789',
+        gatewayToken:'ad09b52149c8b5c48b133a9761a0aa7682093cf1ecdf4c10',
+        status:'running'
+      }
+    },
     refetchOnMount: 'always',
     staleTime: 0,
     enabled,

@@ -24,10 +24,7 @@ interface AppUpdateState {
 }
 
 const UPDATE_STATE_EVENT = 'app-update:state-changed';
-const AUTH_DEEP_LINK_EVENT = 'auth:deep-link';
-const AUTH_PROTOCOL_SCHEME = 'clawpilot';
-const AUTH_HOST = 'auth';
-const ONBOARDING_HOST = 'onboarding';
+
 const parseRepositoryCoordinates = (value: string) => {
   const trimmed = value.trim();
 
@@ -57,16 +54,18 @@ const readRepositoryFromPackageManifest = () => {
     const packageJsonPath = path.join(app.getAppPath(), 'package.json');
     const packageJsonRaw = readFileSync(packageJsonPath, 'utf8');
     const packageJson = JSON.parse(packageJsonRaw) as {
-      clawpilot?: { updateRepository?: string };
+      electronBoilerplate?: { updateRepository?: string };
       repository?: string | { url?: string };
     };
 
     if (
-      packageJson.clawpilot &&
-      typeof packageJson.clawpilot === 'object' &&
-      typeof packageJson.clawpilot.updateRepository === 'string'
+      packageJson.electronBoilerplate &&
+      typeof packageJson.electronBoilerplate === 'object' &&
+      typeof packageJson.electronBoilerplate.updateRepository === 'string'
     ) {
-      return parseRepositoryCoordinates(packageJson.clawpilot.updateRepository);
+      return parseRepositoryCoordinates(
+        packageJson.electronBoilerplate.updateRepository
+      );
     }
 
     if (typeof packageJson.repository === 'string') {
@@ -112,23 +111,6 @@ const baseUpdateState: AppUpdateState = {
 let appUpdateState: AppUpdateState = baseUpdateState;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let mainWindow: BrowserWindow | null = null;
-let pendingAuthDeepLink: string | null = null;
-
-const isSupportedDeepLink = (value: string) => {
-  try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== `${AUTH_PROTOCOL_SCHEME}:`) {
-      return false;
-    }
-
-    return parsed.hostname === AUTH_HOST || parsed.hostname === ONBOARDING_HOST;
-  } catch {
-    return false;
-  }
-};
-
-const getAuthDeepLinkFromArgv = (argv: string[]) =>
-  argv.find(arg => isSupportedDeepLink(arg)) ?? null;
 
 const focusMainWindow = () => {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -140,27 +122,6 @@ const focusMainWindow = () => {
   }
 
   mainWindow.focus();
-};
-
-const emitAuthDeepLink = (url: string) => {
-  pendingAuthDeepLink = url;
-
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
-
-  mainWindow.webContents.send(AUTH_DEEP_LINK_EVENT, url);
-};
-
-const registerProtocolHandler = () => {
-  if (process.defaultApp) {
-    app.setAsDefaultProtocolClient(AUTH_PROTOCOL_SCHEME, process.execPath, [
-      path.resolve(process.argv[1] ?? ''),
-    ]);
-    return;
-  }
-
-  app.setAsDefaultProtocolClient(AUTH_PROTOCOL_SCHEME);
 };
 
 const isAutoUpdateEnabled = () =>
@@ -241,6 +202,7 @@ const checkForAppUpdates = (manual = false) => {
         message: 'Update is already downloading in the background.',
       });
     }
+
     return appUpdateState;
   }
 
@@ -250,6 +212,7 @@ const checkForAppUpdates = (manual = false) => {
         message: 'Update is ready to install.',
       });
     }
+
     return appUpdateState;
   }
 
@@ -298,7 +261,7 @@ const initializeAutoUpdates = () => {
       status: 'disabled',
       supported: false,
       message:
-        'Set UPDATE_REPOSITORY (owner/repo) to enable automatic updates.',
+        'Set electronBoilerplate.updateRepository or UPDATE_REPOSITORY to enable automatic updates.',
     });
     return;
   }
@@ -396,15 +359,11 @@ const initializeAutoUpdates = () => {
   });
 
   checkForAppUpdates();
-  autoUpdateInterval = setInterval(
-    () => {
-      checkForAppUpdates();
-    },
-    60 * 60 * 1000
-  );
+  autoUpdateInterval = setInterval(() => {
+    checkForAppUpdates();
+  }, 60 * 60 * 1000);
 };
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
@@ -415,23 +374,7 @@ if (!hasSingleInstanceLock) {
   app.quit();
 }
 
-app.on('second-instance', (_event, argv) => {
-  const deepLink = getAuthDeepLinkFromArgv(argv);
-  if (deepLink) {
-    emitAuthDeepLink(deepLink);
-  }
-
-  focusMainWindow();
-});
-
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-
-  if (!isSupportedDeepLink(url)) {
-    return;
-  }
-
-  emitAuthDeepLink(url);
+app.on('second-instance', () => {
   focusMainWindow();
 });
 
@@ -464,34 +407,32 @@ ipcMain.handle('auth:open-external-url', async (_event, url: string) => {
 });
 
 ipcMain.handle('auth:get-pending-deep-link', () => {
-  const url = pendingAuthDeepLink;
-  pendingAuthDeepLink = null;
-  return url;
+  return null;
 });
 
 const createWindow = () => {
-  // Create the browser window.
   const isMac = process.platform === 'darwin';
   const isDev = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1260,
+    height: 820,
     minHeight: 720,
-    minWidth: 1024,
+    minWidth: 1080,
     icon: path.join(app.getAppPath(), 'src', 'assets', 'Icon.icns'),
     frame: isMac,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#020617',
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     ...(isMac
       ? {
-          trafficLightPosition: { x: 24, y: 26 },
+          trafficLightPosition: { x: 18, y: 20 },
         }
       : {}),
-    autoHideMenuBar: true, // hides menu bar (like VS Code)
+    autoHideMenuBar: true,
     ...(!isMac
       ? {
           titleBarOverlay: {
-            color: '#020817',
+            color: '#020617',
             symbolColor: '#f8fafc',
             height: 30,
           },
@@ -517,17 +458,12 @@ const createWindow = () => {
 
   window.webContents.on('did-finish-load', () => {
     sendUpdateState(window);
-
-    if (pendingAuthDeepLink) {
-      window.webContents.send(AUTH_DEEP_LINK_EVENT, pendingAuthDeepLink);
-    }
   });
 
   window.on('closed', () => {
     mainWindow = null;
   });
 
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -536,30 +472,16 @@ const createWindow = () => {
     );
   }
 
-  // Open the DevTools in development
   if (isDev) {
     window.webContents.openDevTools();
   }
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  registerProtocolHandler();
-
-  const bootDeepLink = getAuthDeepLinkFromArgv(process.argv);
-  if (bootDeepLink) {
-    pendingAuthDeepLink = bootDeepLink;
-  }
-
   createWindow();
   initializeAutoUpdates();
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (autoUpdateInterval) {
     clearInterval(autoUpdateInterval);
@@ -572,12 +494,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

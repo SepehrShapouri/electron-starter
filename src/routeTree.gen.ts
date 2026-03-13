@@ -9,252 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as LaunchingRouteImport } from './routes/launching'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AuthWelcomeRouteImport } from './routes/auth/welcome'
-import { Route as AuthSignupMagicLinkRouteImport } from './routes/auth/signup-magic-link'
-import { Route as AuthSignupRouteImport } from './routes/auth/signup'
-import { Route as AuthLoginMagicLinkRouteImport } from './routes/auth/login-magic-link'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
-import { Route as AppSkillsRouteImport } from './routes/app/skills'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
-import { Route as AppScheduledRouteImport } from './routes/app/scheduled'
-import { Route as AppIntegrationsRouteImport } from './routes/app/integrations'
-import { Route as AppChannelsRouteImport } from './routes/app/channels'
 
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LaunchingRoute = LaunchingRouteImport.update({
-  id: '/launching',
-  path: '/launching',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AuthWelcomeRoute = AuthWelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthSignupMagicLinkRoute = AuthSignupMagicLinkRouteImport.update({
-  id: '/signup-magic-link',
-  path: '/signup-magic-link',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginMagicLinkRoute = AuthLoginMagicLinkRouteImport.update({
-  id: '/login-magic-link',
-  path: '/login-magic-link',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AppSkillsRoute = AppSkillsRouteImport.update({
-  id: '/skills',
-  path: '/skills',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppScheduledRoute = AppScheduledRouteImport.update({
-  id: '/scheduled',
-  path: '/scheduled',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppIntegrationsRoute = AppIntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChannelsRoute = AppChannelsRouteImport.update({
-  id: '/channels',
-  path: '/channels',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/auth': typeof AuthRouteWithChildren
-  '/launching': typeof LaunchingRoute
-  '/onboarding': typeof OnboardingRoute
-  '/app/channels': typeof AppChannelsRoute
-  '/app/integrations': typeof AppIntegrationsRoute
-  '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/skills': typeof AppSkillsRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
-  '/auth/welcome': typeof AuthWelcomeRoute
-  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRouteWithChildren
-  '/launching': typeof LaunchingRoute
-  '/onboarding': typeof OnboardingRoute
-  '/app/channels': typeof AppChannelsRoute
-  '/app/integrations': typeof AppIntegrationsRoute
-  '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/skills': typeof AppSkillsRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
-  '/auth/welcome': typeof AuthWelcomeRoute
-  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/auth': typeof AuthRouteWithChildren
-  '/launching': typeof LaunchingRoute
-  '/onboarding': typeof OnboardingRoute
-  '/app/channels': typeof AppChannelsRoute
-  '/app/integrations': typeof AppIntegrationsRoute
-  '/app/scheduled': typeof AppScheduledRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/skills': typeof AppSkillsRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/login-magic-link': typeof AuthLoginMagicLinkRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/signup-magic-link': typeof AuthSignupMagicLinkRoute
-  '/auth/welcome': typeof AuthWelcomeRoute
-  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/app'
-    | '/auth'
-    | '/launching'
-    | '/onboarding'
-    | '/app/channels'
-    | '/app/integrations'
-    | '/app/scheduled'
-    | '/app/settings'
-    | '/app/skills'
-    | '/auth/login'
-    | '/auth/login-magic-link'
-    | '/auth/signup'
-    | '/auth/signup-magic-link'
-    | '/auth/welcome'
-    | '/app/'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/launching'
-    | '/onboarding'
-    | '/app/channels'
-    | '/app/integrations'
-    | '/app/scheduled'
-    | '/app/settings'
-    | '/app/skills'
-    | '/auth/login'
-    | '/auth/login-magic-link'
-    | '/auth/signup'
-    | '/auth/signup-magic-link'
-    | '/auth/welcome'
-    | '/app'
-  id:
-    | '__root__'
-    | '/'
-    | '/app'
-    | '/auth'
-    | '/launching'
-    | '/onboarding'
-    | '/app/channels'
-    | '/app/integrations'
-    | '/app/scheduled'
-    | '/app/settings'
-    | '/app/skills'
-    | '/auth/login'
-    | '/auth/login-magic-link'
-    | '/auth/signup'
-    | '/auth/signup-magic-link'
-    | '/auth/welcome'
-    | '/app/'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRouteWithChildren
-  AuthRoute: typeof AuthRouteWithChildren
-  LaunchingRoute: typeof LaunchingRoute
-  OnboardingRoute: typeof OnboardingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/launching': {
-      id: '/launching'
-      path: '/launching'
-      fullPath: '/launching'
-      preLoaderRoute: typeof LaunchingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -262,130 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/': {
-      id: '/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/auth/welcome': {
-      id: '/auth/welcome'
-      path: '/welcome'
-      fullPath: '/auth/welcome'
-      preLoaderRoute: typeof AuthWelcomeRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/signup-magic-link': {
-      id: '/auth/signup-magic-link'
-      path: '/signup-magic-link'
-      fullPath: '/auth/signup-magic-link'
-      preLoaderRoute: typeof AuthSignupMagicLinkRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/signup': {
-      id: '/auth/signup'
-      path: '/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/login-magic-link': {
-      id: '/auth/login-magic-link'
-      path: '/login-magic-link'
-      fullPath: '/auth/login-magic-link'
-      preLoaderRoute: typeof AuthLoginMagicLinkRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/app/skills': {
-      id: '/app/skills'
-      path: '/skills'
-      fullPath: '/app/skills'
-      preLoaderRoute: typeof AppSkillsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/scheduled': {
-      id: '/app/scheduled'
-      path: '/scheduled'
-      fullPath: '/app/scheduled'
-      preLoaderRoute: typeof AppScheduledRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/integrations': {
-      id: '/app/integrations'
-      path: '/integrations'
-      fullPath: '/app/integrations'
-      preLoaderRoute: typeof AppIntegrationsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/channels': {
-      id: '/app/channels'
-      path: '/channels'
-      fullPath: '/app/channels'
-      preLoaderRoute: typeof AppChannelsRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
-interface AppRouteChildren {
-  AppChannelsRoute: typeof AppChannelsRoute
-  AppIntegrationsRoute: typeof AppIntegrationsRoute
-  AppScheduledRoute: typeof AppScheduledRoute
-  AppSettingsRoute: typeof AppSettingsRoute
-  AppSkillsRoute: typeof AppSkillsRoute
-  AppIndexRoute: typeof AppIndexRoute
-}
-
-const AppRouteChildren: AppRouteChildren = {
-  AppChannelsRoute: AppChannelsRoute,
-  AppIntegrationsRoute: AppIntegrationsRoute,
-  AppScheduledRoute: AppScheduledRoute,
-  AppSettingsRoute: AppSettingsRoute,
-  AppSkillsRoute: AppSkillsRoute,
-  AppIndexRoute: AppIndexRoute,
-}
-
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
-
-interface AuthRouteChildren {
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthLoginMagicLinkRoute: typeof AuthLoginMagicLinkRoute
-  AuthSignupRoute: typeof AuthSignupRoute
-  AuthSignupMagicLinkRoute: typeof AuthSignupMagicLinkRoute
-  AuthWelcomeRoute: typeof AuthWelcomeRoute
-}
-
-const AuthRouteChildren: AuthRouteChildren = {
-  AuthLoginRoute: AuthLoginRoute,
-  AuthLoginMagicLinkRoute: AuthLoginMagicLinkRoute,
-  AuthSignupRoute: AuthSignupRoute,
-  AuthSignupMagicLinkRoute: AuthSignupMagicLinkRoute,
-  AuthWelcomeRoute: AuthWelcomeRoute,
-}
-
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRouteWithChildren,
-  AuthRoute: AuthRouteWithChildren,
-  LaunchingRoute: LaunchingRoute,
-  OnboardingRoute: OnboardingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
