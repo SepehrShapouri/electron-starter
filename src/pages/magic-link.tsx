@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Clawpilot from '@/components/icons/Clawpilot.svg';
 import IconEmail1Sparkle from '@/components/icons/IconEmail1Sparkle.svg';
+import { captureAnalyticsEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
@@ -73,6 +74,11 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
           currentPath
         )}`,
       });
+      if (isSignUp) {
+        captureAnalyticsEvent('app_signup_magic_link_requested', {
+          method: 'magic_link',
+        });
+      }
       setMagicLinkSent(true);
     } catch (error) {
       setErrorMessage(
@@ -88,34 +94,34 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
   if (magicLinkSent) {
     return (
       <div
-      className={cn(
-        'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex items-center justify-center'
-      )}
-    >
-      <div className={cn('flex flex-col gap-6 max-w-[380px] w-full')}>
-        <IconEmail1Sparkle className="h-10 w-10 text-muted-foreground" />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-light tracking-tight text-foreground">
-            Magic link sent.
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Check your inbox for a secure sign-in link.
-          </p>
+        className={cn(
+          'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex items-center justify-center'
+        )}
+      >
+        <div className={cn('flex flex-col gap-6 max-w-[380px] w-full')}>
+          <IconEmail1Sparkle className="h-10 w-10 text-muted-foreground" />
+          <div className="space-y-2">
+            <h1 className="text-2xl font-light tracking-tight text-foreground">
+              Magic link sent.
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Check your inbox for a secure sign-in link.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 w-full"
+            onClick={handleResend}
+          >
+            Resend link
+          </Button>
+
+          <Button asChild type="button" variant="ghost" className="h-11 w-full">
+            <Link to={backPath}>Back</Link>
+          </Button>
         </div>
-
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-11 w-full"
-          onClick={handleResend}
-        >
-          Resend link
-        </Button>
-
-        <Button asChild type="button" variant="ghost" className="h-11 w-full">
-          <Link to={backPath}>Back</Link>
-        </Button>
-      </div>
       </div>
     );
   }
@@ -126,7 +132,7 @@ export default function MagicLinkPage({ mode }: MagicLinkPageProps) {
         'w-full h-full max-h-[568px] p-8 rounded-3xl bg-floated-blur backdrop-blur-[100px] flex items-center justify-center'
       )}
     >
-      <div className='flex flex-col gap-6 max-w-[380px] w-full'>
+      <div className="flex flex-col gap-6 max-w-[380px] w-full">
         <Link
           to={backPath}
           className="flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"

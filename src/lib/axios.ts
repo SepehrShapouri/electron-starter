@@ -42,6 +42,18 @@ export const loadAuthToken = () => {
   }
 };
 
+export const hasAuthToken = () => {
+  if (apiClient.defaults.headers.common.Authorization) {
+    return true;
+  }
+
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return Boolean(localStorage.getItem(AUTH_TOKEN_STORAGE_KEY));
+};
+
 loadAuthToken();
 
 export class ApiError extends Error {

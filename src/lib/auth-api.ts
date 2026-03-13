@@ -1,6 +1,7 @@
 import { apiClient, ApiError, getApiErrorMessage, setAuthToken } from './axios';
 import axios from 'axios';
 import { authClient } from './auth-client';
+import { resetAnalytics } from './analytics';
 
 type AuthResult = {
   token?: string | null;
@@ -126,6 +127,7 @@ export const authApi = {
         }
 
         setAuthToken(null);
+        resetAnalytics();
         return response.data;
       })
       .catch(error => {
@@ -138,12 +140,16 @@ export const authApi = {
       .get<GatewayProvision>('/api/v1/infra/provision')
       .then(response => response.data)
       .catch(error => {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        const status = axios.isAxiosError(error)
+          ? error.response?.status
+          : undefined;
         throw new ApiError(getApiErrorMessage(error), status);
       }),
   getProvisionStatus: (instanceId: string) =>
     apiClient
-      .get<ProvisionStatusResponse>(`/api/v1/infra/provision/${instanceId}/status`)
+      .get<ProvisionStatusResponse>(
+        `/api/v1/infra/provision/${instanceId}/status`
+      )
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));
@@ -192,7 +198,9 @@ export const authApi = {
       }),
   getOnboardingEncryptionKey: () =>
     apiClient
-      .get<OnboardingEncryptionKeyResponse>('/api/v1/infra/onboarding/encryption-key')
+      .get<OnboardingEncryptionKeyResponse>(
+        '/api/v1/infra/onboarding/encryption-key'
+      )
       .then(response => response.data)
       .catch(error => {
         throw new Error(getApiErrorMessage(error));

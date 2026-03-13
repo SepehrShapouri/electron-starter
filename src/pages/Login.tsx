@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { authApi } from '@/lib/auth-api';
+import { identifyAnalyticsUser } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +50,8 @@ export default function Login() {
 
   const signInMutation = useMutation({
     mutationFn: authApi.signIn,
-    onSuccess: async () => {
+    onSuccess: async session => {
+      identifyAnalyticsUser(session);
       await queryClient.invalidateQueries({ queryKey: ['session'] });
       const onboarding = await authApi.getOnboarding().catch(() => null);
       navigate({ to: onboarding?.completed ? '/app' : '/onboarding' });

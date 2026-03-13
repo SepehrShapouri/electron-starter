@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { authApi } from '@/lib/auth-api';
+import {
+  captureAnalyticsEvent,
+  clearPendingSignupIntent,
+  identifyAnalyticsUser,
+  setPendingSignupIntent,
+} from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,7 +61,12 @@ export default function Signup() {
 
   const signUpMutation = useMutation({
     mutationFn: authApi.signUp,
-    onSuccess: async () => {
+    onSuccess: async session => {
+      clearPendingSignupIntent();
+      identifyAnalyticsUser(session);
+      captureAnalyticsEvent('app_signup', {
+        method: 'email_password',
+      });
       await queryClient.invalidateQueries({ queryKey: ['session'] });
       await queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       navigate({ to: '/onboarding' });
@@ -119,6 +130,10 @@ export default function Signup() {
         return;
       }
 
+      setPendingSignupIntent({
+        method: 'google',
+      });
+
       if (window.electronAPI) {
         await window.electronAPI.openExternalUrl(redirectUrl);
         return;
@@ -126,6 +141,7 @@ export default function Signup() {
 
       window.location.href = redirectUrl;
     } catch (error) {
+      clearPendingSignupIntent();
       setError('root', {
         message:
           error instanceof Error

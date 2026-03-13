@@ -18,6 +18,12 @@ import {
 } from '@/features/onboarding/lib/utils';
 import useSignout from '@/hooks/use-signout';
 import { authApi } from '@/lib/auth-api';
+import {
+  captureAnalyticsEvent,
+  clearPendingSubscriptionIntent,
+  consumePendingSubscriptionIntent,
+  setPendingSubscriptionIntent,
+} from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -49,8 +55,8 @@ export default function OnboardingPage({
     'idle' | 'launching' | 'failed'
   >('idle');
   const provisioningStarted = useRef(false);
-  const {  signout } = useSignout();
-  
+  const { signout } = useSignout();
+
   useEffect(() => {
     const tween = gsap.fromTo(
       containerRef.current,
@@ -93,12 +99,27 @@ export default function OnboardingPage({
     mutationFn: authApi.createOnboardingCheckoutSession,
     onMutate: () => setErrorMessage(''),
     onSuccess: async data => {
-      if (window.electronAPI) {
-        await window.electronAPI.openExternalUrl(data.url);
-        return;
-      }
+      setPendingSubscriptionIntent({
+        provider: selectedModel,
+        keySource,
+      });
+      captureAnalyticsEvent('app_subscription_checkout_started', {
+        provider: selectedModel,
+        key_source: keySource,
+        source: 'onboarding',
+      });
 
-      window.location.href = data.url;
+      try {
+        if (window.electronAPI) {
+          await window.electronAPI.openExternalUrl(data.url);
+          return;
+        }
+
+        window.location.href = data.url;
+      } catch (error) {
+        clearPendingSubscriptionIntent();
+        setErrorMessage(getErrorMessage(error));
+      }
     },
     onError: error => setErrorMessage(getErrorMessage(error)),
   });
@@ -150,6 +171,38 @@ export default function OnboardingPage({
     void runProvision(payload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutStatus, encryptedData, isSubscribed]);
+
+  useEffect(() => {
+    if (checkoutStatus !== 'cancel') {
+      return;
+    }
+
+    clearPendingSubscriptionIntent();
+  }, [checkoutStatus]);
+
+  useEffect(() => {
+    if (checkoutStatus !== 'success' || !isSubscribed) {
+      return;
+    }
+
+    const pendingSubscription = consumePendingSubscriptionIntent();
+    if (!pendingSubscription) {
+      return;
+    }
+
+    captureAnalyticsEvent('app_subscription_started', {
+      provider: pendingSubscription.provider,
+      key_source: pendingSubscription.keySource,
+      source: 'onboarding',
+      billing_status: billingQuery.data?.status ?? null,
+      plan_label: billingQuery.data?.planLabel ?? null,
+    });
+  }, [
+    billingQuery.data?.planLabel,
+    billingQuery.data?.status,
+    checkoutStatus,
+    isSubscribed,
+  ]);
 
   const isByok = keySource === 'byok';
 

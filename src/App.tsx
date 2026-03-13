@@ -1,12 +1,21 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
+import type { ParsedLocation } from '@tanstack/router-core';
 import { useEffect, useRef } from 'react';
 import { ThemeProvider } from './components/theme-provider.tsx';
 import './index.css';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { authApi } from '@/lib/auth-api';
-import { setAuthToken } from '@/lib/axios';
+import {
+  captureAnalyticsEvent,
+  capturePageview,
+  clearPendingSignupIntent,
+  consumePendingSignupIntent,
+  identifyAnalyticsUser,
+  initAnalytics,
+} from '@/lib/analytics';
+import { hasAuthToken, setAuthToken } from '@/lib/axios';
 import { Toaster } from 'sileo';
 import { router } from './utils/routes';
 const queryClient = new QueryClient();
@@ -73,7 +82,10 @@ const parseAuthDeepLink = (url: string) => {
         return {
           type: 'success' as const,
           token,
-          nextPath: getSafeDeepLinkPath(parsed.searchParams.get('next'), '/app'),
+          nextPath: getSafeDeepLinkPath(
+            parsed.searchParams.get('next'),
+            '/app'
+          ),
         };
       }
     }
@@ -83,7 +95,7 @@ const parseAuthDeepLink = (url: string) => {
         type: 'callback' as const,
         nextPath: getSafeDeepLinkPath(
           parsed.searchParams.get('next'),
-          '/app/integrations',
+          '/app/integrations'
         ),
       };
     }
@@ -93,7 +105,7 @@ const parseAuthDeepLink = (url: string) => {
         type: 'error' as const,
         nextPath: getSafeDeepLinkPath(
           parsed.searchParams.get('next'),
-          '/auth/login',
+          '/auth/login'
         ),
       };
     }
@@ -108,6 +120,40 @@ const parseAuthDeepLink = (url: string) => {
 
 function App() {
   const handledDeepLinkRef = useRef<string | null>(null);
+  const trackedPageviewRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    initAnalytics();
+
+    const trackRoute = (
+      location: ParsedLocation,
+      fromLocation?: ParsedLocation
+    ) => {
+      if (trackedPageviewRef.current === location.href) {
+        return;
+      }
+
+      trackedPageviewRef.current = location.href;
+      capturePageview(location, fromLocation);
+      if (hasAuthToken()) {
+        identifyAnalyticsUser(queryClient.getQueryData(['session']));
+      }
+    };
+
+    const initialLocation =
+      router.state.resolvedLocation ?? router.state.location;
+    if (initialLocation) {
+      trackRoute(initialLocation);
+    }
+
+    const removeRouteListener = router.subscribe('onResolved', event => {
+      trackRoute(event.toLocation, event.fromLocation);
+    });
+
+    return () => {
+      removeRouteListener();
+    };
+  }, []);
 
   useEffect(() => {
     if (!window.electronAPI) {
@@ -142,18 +188,32 @@ function App() {
       }
 
       if (deepLink.type === 'error') {
+        clearPendingSignupIntent();
         router.navigate({ to: deepLink.nextPath });
         return;
       }
 
       setAuthToken(deepLink.token);
 
-      const session = await authApi.getSession().catch(() => null);
+      const session = await queryClient
+        .fetchQuery({
+          queryKey: ['session'],
+          queryFn: authApi.getSession,
+        })
+        .catch(() => null);
       if (!session) {
         return;
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['session'] });
+      identifyAnalyticsUser(session);
+
+      const pendingSignupIntent = consumePendingSignupIntent();
+      if (pendingSignupIntent) {
+        captureAnalyticsEvent('app_signup', {
+          method: pendingSignupIntent.method,
+        });
+      }
+
       router.navigate({ to: deepLink.nextPath });
     };
 
@@ -165,9 +225,11 @@ function App() {
       void syncSessionFromDeepLink(url);
     });
 
-    const removeAuthDeepLinkListener = window.electronAPI.onAuthDeepLink(url => {
-      void syncSessionFromDeepLink(url);
-    });
+    const removeAuthDeepLinkListener = window.electronAPI.onAuthDeepLink(
+      url => {
+        void syncSessionFromDeepLink(url);
+      }
+    );
 
     return () => {
       removeAuthDeepLinkListener();
