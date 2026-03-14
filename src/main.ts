@@ -406,9 +406,6 @@ ipcMain.handle('auth:open-external-url', async (_event, url: string) => {
   await shell.openExternal(url);
 });
 
-ipcMain.handle('auth:get-pending-deep-link', () => {
-  return null;
-});
 
 const createWindow = () => {
   const isMac = process.platform === 'darwin';
