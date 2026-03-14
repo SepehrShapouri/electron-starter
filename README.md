@@ -24,7 +24,7 @@ npm start
 
 - `npm start` - run the Electron app in development
 - `npm run type-check` - run TypeScript without emitting files
-- `npm run lint` - run ESLint on `src/` and `tests/`
+- `npm run lint` - run ESLint on `src/`
 - `npm run test` - run Vitest once
 - `npm run test:e2e` - run Playwright
 - `npm run routes:generate` - regenerate `src/routeTree.gen.ts`
@@ -42,6 +42,19 @@ You can set it in either place:
    Set `UPDATE_REPOSITORY=owner/repo`
 
 In development builds, the updater stays disabled by design.
+
+## GitHub Actions
+
+The included GitHub Actions workflow is starter-safe by default:
+
+- pushes and pull requests build macOS artifacts for CI verification
+- pushing a `v*` tag creates a GitHub release in the current repository
+- manual runs can optionally create a release with a custom tag
+- macOS signing only turns on when the Apple certificate and notarization
+  secrets are configured
+
+If you keep the release flow, set `repository` in `package.json` and update
+the app name, executable, icons, and signing secrets for your own project.
 
 ## Project shape
 

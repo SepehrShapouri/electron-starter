@@ -81,6 +81,9 @@ const updateRepositoryOwner = updateRepository?.owner ?? '';
 const updateRepositoryName = updateRepository?.name ?? '';
 const hasGitHubPublisherConfig =
   Boolean(updateRepositoryOwner) && Boolean(updateRepositoryName);
+const shouldSignMacOS =
+  process.platform === 'darwin' &&
+  process.env.ENABLE_MACOS_SIGNING === 'true';
 const appleId = process.env.APPLE_ID ?? '';
 const appleIdPassword =
   process.env.APPLE_APP_SPECIFIC_PASSWORD ??
@@ -88,16 +91,20 @@ const appleIdPassword =
   '';
 const appleTeamId = process.env.APPLE_TEAM_ID ?? '';
 const hasNotarizeConfig =
-  appleId.length > 0 && appleIdPassword.length > 0 && appleTeamId.length > 0;
+  shouldSignMacOS &&
+  appleId.length > 0 &&
+  appleIdPassword.length > 0 &&
+  appleTeamId.length > 0;
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'electron-update-starter',
     icon: 'src/assets/Icon',
-    osxSign: process.platform === 'darwin' ? true : undefined,
+    // Keep starter builds unsigned until a repo opts into code signing.
+    osxSign: shouldSignMacOS ? true : undefined,
     osxNotarize:
-      process.platform === 'darwin' && hasNotarizeConfig
+      shouldSignMacOS && hasNotarizeConfig
         ? {
             appleId,
             appleIdPassword,

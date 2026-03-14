@@ -1,37 +1,29 @@
 name: Build and Release
 
 on:
+  pull_request:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:
       create_release:
-        description: 'Create a release'
+        description: 'Create a GitHub release for this repository'
         required: true
         default: false
         type: boolean
       release_tag:
-        description: 'Release tag (e.g., v1.0.0)'
+        description: 'Release tag to use (defaults to package.json version)'
         required: false
         default: ''
         type: string
 
 permissions:
   contents: write
-  packages: write
-
-env:
-  AUTO_RELEASE_VERSION: 1.0.${{ github.run_number }}
-  RELEASES_REPOSITORY: Sidejar/clawpilot-releases
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest]
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
@@ -42,9 +34,6 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Set CI app version
-        run: npm version "${{ env.AUTO_RELEASE_VERSION }}" --no-git-tag-version
 
       - name: Install dependencies
         run: npm ci
@@ -57,17 +46,28 @@ jobs:
         continue-on-error: true
         run: npm run lint
 
-      - name: Import Apple signing certificate
-        if: runner.os == 'macOS'
+      - name: Detect macOS signing configuration
+        id: signing
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
         run: |
-          if [[ -z "$MACOS_CERTIFICATE" || -z "$MACOS_CERTIFICATE_PASSWORD" || -z "$KEYCHAIN_PASSWORD" ]]; then
-            echo "Signing secrets missing. Failing build."
-            exit 1
+          if [[ -n "$MACOS_CERTIFICATE" && -n "$MACOS_CERTIFICATE_PASSWORD" && -n "$KEYCHAIN_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "macOS signing: enabled"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "macOS signing: disabled (workflow will build unsigned artifacts)"
           fi
+
+      - name: Import Apple signing certificate
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
           echo "$MACOS_CERTIFICATE" | base64 --decode > /tmp/macos-signing.p12
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
@@ -78,7 +78,7 @@ jobs:
           security find-identity -v -p codesigning build.keychain
 
       - name: Validate signing and notarization configuration
-        if: runner.os == 'macOS'
+        if: steps.signing.outputs.enabled == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -115,6 +115,7 @@ jobs:
 
       - name: Build application
         env:
+          ENABLE_MACOS_SIGNING: ${{ steps.signing.outputs.enabled }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -122,26 +123,24 @@ jobs:
         run: npm run make
 
       - name: List build output (Unix)
-        if: runner.os != 'Windows'
         run: |
           echo "Build output structure:"
           find out -type f -name "*" 2>/dev/null || echo "No out directory found"
           ls -la out/ 2>/dev/null || echo "No out directory"
 
       - name: Upload artifacts (macOS)
-        if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: electron-app-macos
+          name: macos-build
           path: out/make/**/*
           retention-days: 30
+          if-no-files-found: error
 
   release:
     needs: build
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.create_release == true) ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release) ||
       startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -150,28 +149,23 @@ jobs:
 
       - name: Get package version
         id: package-version
-        run: echo "version=${{ env.AUTO_RELEASE_VERSION }}" >> $GITHUB_OUTPUT
-
-      - name: Generate timestamp
-        id: timestamp
-        run: echo "timestamp=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Determine release tag
         id: release-tag
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.release_tag }}" ]]; then
-            echo "tag=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
-            echo "name=Release ${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "tag=v${{ steps.package-version.outputs.version }}" >> $GITHUB_OUTPUT
-            echo "name=Release v${{ steps.package-version.outputs.version }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "name=Release ${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            tag="${{ inputs.release_tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
           else
-            echo "tag=v${{ steps.package-version.outputs.version }}-${{ steps.timestamp.outputs.timestamp }}" >> $GITHUB_OUTPUT
-            echo "name=Release v${{ steps.package-version.outputs.version }} (${{ steps.timestamp.outputs.timestamp }})" >> $GITHUB_OUTPUT
+            tag="v${{ steps.package-version.outputs.version }}"
           fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "name=Release $tag" >> "$GITHUB_OUTPUT"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -181,23 +175,14 @@ jobs:
         with:
           tag_name: ${{ steps.release-tag.outputs.tag }}
           name: ${{ steps.release-tag.outputs.name }}
-          repository: ${{ env.RELEASES_REPOSITORY }}
-          target_commitish: main
           files: |
-            electron-app-macos/**/*
+            macos-build/**/*
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
-            🚀 **Manual Release**
+            Build artifacts generated from this starter repository.
 
-            **Version:** ${{ steps.package-version.outputs.version }}
-            **Build Date:** ${{ steps.timestamp.outputs.timestamp }}
-            **Commit:** ${{ github.sha }}
-            **Trigger:** ${{ github.event_name }}
-
-            This release was manually triggered from the GitHub Actions interface.
-
-            ## 📦 Downloads
-            - **macOS**: `.dmg` installer and `.zip` portable
-          token: ${{ secrets.RELEASES_REPO_TOKEN }}
+            Version: ${{ steps.package-version.outputs.version }}
+            Commit: ${{ github.sha }}
+            Trigger: ${{ github.event_name }}
