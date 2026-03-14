@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowUpRight } from 'lucide-react';
 
@@ -54,6 +55,7 @@ function StarterHomeRoute() {
               <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
           ))}
+          <Button>hey</Button>
         </div>
       </div>
     </main>
