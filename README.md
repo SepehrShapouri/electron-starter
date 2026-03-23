@@ -8,7 +8,7 @@ plumbing in place:
 
 - Main-process auto-update setup through `electron-updater`'s built-in
   Electron `autoUpdater` flow
-- Preload bridge for checking, downloading, and installing updates
+- Preload bridge for checkingg, downloading, and installing updates
 - In-app starter screen that surfacesh updater status and install actions
 - File-based routing with TanStack Router
 - Theme support with a simple dark/light toggle
