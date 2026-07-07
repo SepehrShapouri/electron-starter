@@ -1,4 +1,4 @@
-# Electron Update Starter
+.# Electron Update Starter
 
 Reusable Electron boilerplate built with Electron Forge, React 19,
 TypeScript, TanStack Router, and Tailwind CSS v4.
