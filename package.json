@@ -5,13 +5,13 @@
   "description": "Reusable Electron starter with React, TanStack Router, Tailwind CSS, and in-app update plumbing.",
   "main": ".vite/build/main.js",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "node api.js && electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
-    "build": "tsc && electron-forge make",
+    "build": "node api.js && tsc && electron-forge make",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "test": "vitest --run",
@@ -22,8 +22,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "routes:generate": "tsr generate",
-    "routes:watch": "tsr watch",
-    "preinstall": "node dist/setup.js"
+    "routes:watch": "tsr watch"
   },
   "keywords": [
     "electron",
