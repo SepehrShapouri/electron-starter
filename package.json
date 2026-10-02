@@ -22,8 +22,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "routes:generate": "tsr generate",
-    "routes:watch": "tsr watch",
-    "preinstall": "node dist/setup.js"
+    "routes:watch": "tsr watch"
   },
   "keywords": [
     "electron",
